@@ -41,12 +41,19 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [notes, setNotes] = useState("");
+  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
 
   useEffect(() => {
     if (open) {
       loadServices();
     }
   }, [open, business.id]);
+
+  useEffect(() => {
+    if (selectedDate) {
+      loadBookedSlots();
+    }
+  }, [selectedDate, business.id]);
 
   const loadServices = async () => {
     try {
@@ -60,6 +67,44 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
       setServices(data || []);
     } catch (error: any) {
       toast.error("Greška prilikom učitavanja usluga");
+    }
+  };
+
+  const loadBookedSlots = async () => {
+    if (!selectedDate) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("booking_time, service_id, services(duration_minutes)")
+        .eq("business_id", business.id)
+        .eq("booking_date", format(selectedDate, "yyyy-MM-dd"))
+        .in("status", ["pending", "confirmed"]);
+
+      if (error) throw error;
+
+      const occupied: string[] = [];
+      data?.forEach((booking: any) => {
+        const startTime = booking.booking_time;
+        const duration = booking.services?.duration_minutes || 30;
+        const slots = Math.ceil(duration / 30);
+
+        // Mark all 30-minute slots occupied by this booking
+        const [hours, minutes] = startTime.split(':').map(Number);
+        const startMinutes = hours * 60 + minutes;
+
+        for (let i = 0; i < slots; i++) {
+          const slotMinutes = startMinutes + (i * 30);
+          const slotHours = Math.floor(slotMinutes / 60);
+          const slotMins = slotMinutes % 60;
+          const slotTime = `${slotHours.toString().padStart(2, "0")}:${slotMins.toString().padStart(2, "0")}`;
+          occupied.push(slotTime);
+        }
+      });
+
+      setBookedSlots(occupied);
+    } catch (error: any) {
+      toast.error("Greška prilikom učitavanja zauzetih termina");
     }
   };
 
@@ -110,6 +155,33 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
 
   const selectedServiceData = services.find((s) => s.id === selectedService);
 
+  const getAvailableSlots = () => {
+    if (!selectedServiceData) return timeSlots;
+
+    const serviceDuration = selectedServiceData.duration_minutes;
+    const slotsNeeded = Math.ceil(serviceDuration / 30);
+
+    return timeSlots.filter((slot) => {
+      // Check if this slot and all subsequent required slots are available
+      const [hours, minutes] = slot.split(':').map(Number);
+      const startMinutes = hours * 60 + minutes;
+
+      for (let i = 0; i < slotsNeeded; i++) {
+        const checkMinutes = startMinutes + (i * 30);
+        const checkHours = Math.floor(checkMinutes / 60);
+        const checkMins = checkMinutes % 60;
+        const checkTime = `${checkHours.toString().padStart(2, "0")}:${checkMins.toString().padStart(2, "0")}`;
+        
+        if (bookedSlots.includes(checkTime)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  };
+
+  const availableSlots = getAvailableSlots();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -154,7 +226,7 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
             />
           </div>
 
-          {selectedDate && (
+          {selectedDate && selectedService && (
             <div className="space-y-2">
               <Label>Odaberite vrijeme *</Label>
               <Select value={selectedTime} onValueChange={setSelectedTime}>
@@ -162,11 +234,17 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
                   <SelectValue placeholder="Odaberite vrijeme" />
                 </SelectTrigger>
                 <SelectContent>
-                  {timeSlots.map((time) => (
-                    <SelectItem key={time} value={time}>
-                      {time}
+                  {availableSlots.length > 0 ? (
+                    availableSlots.map((time) => (
+                      <SelectItem key={time} value={time}>
+                        {time}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-slots" disabled>
+                      Nema slobodnih termina
                     </SelectItem>
-                  ))}
+                  )}
                 </SelectContent>
               </Select>
             </div>
