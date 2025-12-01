@@ -108,12 +108,35 @@ const BookingsList = ({ businessId, isBusinessView }: BookingsListProps) => {
 
   const updateBookingStatus = async (bookingId: string, status: string) => {
     try {
+      const booking = bookings.find(b => b.id === bookingId);
+      if (!booking) return;
+
       const { error } = await supabase
         .from("bookings")
         .update({ status })
         .eq("id", bookingId);
 
       if (error) throw error;
+
+      // Send status change email
+      try {
+        await supabase.functions.invoke("send-booking-email", {
+          body: {
+            type: "status_change",
+            bookingId: bookingId,
+            clientEmail: booking.profiles.email,
+            clientName: booking.profiles.full_name || "Korisnik",
+            businessName: booking.businesses.name,
+            serviceName: booking.services.name,
+            bookingDate: format(new Date(booking.booking_date), "dd.MM.yyyy"),
+            bookingTime: booking.booking_time,
+            status: status,
+          },
+        });
+      } catch (emailError) {
+        console.error("Email sending failed:", emailError);
+      }
+
       toast.success("Status rezervacije je ažuriran!");
       loadBookings();
     } catch (error: any) {
