@@ -16,6 +16,7 @@ interface Business {
   phone: string;
   email: string;
   image_url: string;
+  working_hours?: any;
 }
 
 const BusinessList = () => {

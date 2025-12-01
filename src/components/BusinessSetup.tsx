@@ -33,6 +33,15 @@ const BusinessSetup = ({ onComplete }: BusinessSetupProps) => {
     phone: "",
     email: "",
   });
+  const [workingHours, setWorkingHours] = useState({
+    monday: "09:00-17:00",
+    tuesday: "09:00-17:00",
+    wednesday: "09:00-17:00",
+    thursday: "09:00-17:00",
+    friday: "09:00-17:00",
+    saturday: "closed",
+    sunday: "closed",
+  });
 
   useEffect(() => {
     loadExistingBusiness();
@@ -58,6 +67,9 @@ const BusinessSetup = ({ onComplete }: BusinessSetupProps) => {
         phone: data.phone || "",
         email: data.email || "",
       });
+      if (data.working_hours) {
+        setWorkingHours(data.working_hours as any);
+      }
     }
   };
 
@@ -72,7 +84,7 @@ const BusinessSetup = ({ onComplete }: BusinessSetupProps) => {
       if (existingBusiness) {
         const { error } = await supabase
           .from("businesses")
-          .update(formData)
+          .update({ ...formData, working_hours: workingHours })
           .eq("id", existingBusiness.id);
 
         if (error) throw error;
@@ -80,7 +92,7 @@ const BusinessSetup = ({ onComplete }: BusinessSetupProps) => {
       } else {
         const { error } = await supabase
           .from("businesses")
-          .insert([{ ...formData, owner_id: user.id }]);
+          .insert([{ ...formData, owner_id: user.id, working_hours: workingHours }]);
 
         if (error) throw error;
         toast.success("Tvrtka je uspješno kreirana!");
@@ -168,6 +180,71 @@ const BusinessSetup = ({ onComplete }: BusinessSetupProps) => {
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
               />
             </div>
+          </div>
+
+          <div className="space-y-4">
+            <Label className="text-lg font-semibold">Radno vrijeme</Label>
+            {Object.entries(workingHours).map(([day, hours]) => {
+              const dayNames: Record<string, string> = {
+                monday: "Ponedjeljak",
+                tuesday: "Utorak",
+                wednesday: "Srijeda",
+                thursday: "Četvrtak",
+                friday: "Petak",
+                saturday: "Subota",
+                sunday: "Nedjelja",
+              };
+              
+              return (
+                <div key={day} className="grid grid-cols-1 md:grid-cols-3 gap-2 items-center">
+                  <Label>{dayNames[day]}</Label>
+                  <Select
+                    value={hours === "closed" ? "closed" : "open"}
+                    onValueChange={(value) => {
+                      setWorkingHours({
+                        ...workingHours,
+                        [day]: value === "closed" ? "closed" : "09:00-17:00",
+                      });
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="open">Otvoreno</SelectItem>
+                      <SelectItem value="closed">Zatvoreno</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {hours !== "closed" && (
+                    <div className="flex gap-2 items-center">
+                      <Input
+                        type="time"
+                        value={hours.split("-")[0]}
+                        onChange={(e) => {
+                          const [, end] = hours.split("-");
+                          setWorkingHours({
+                            ...workingHours,
+                            [day]: `${e.target.value}-${end}`,
+                          });
+                        }}
+                      />
+                      <span>-</span>
+                      <Input
+                        type="time"
+                        value={hours.split("-")[1]}
+                        onChange={(e) => {
+                          const [start] = hours.split("-");
+                          setWorkingHours({
+                            ...workingHours,
+                            [day]: `${start}-${e.target.value}`,
+                          });
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           <div className="flex gap-4 pt-4">
