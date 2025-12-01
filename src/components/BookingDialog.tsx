@@ -137,6 +137,26 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
 
       if (error) throw error;
 
+      // Send confirmation email
+      try {
+        const service = services.find(s => s.id === selectedService);
+        await supabase.functions.invoke("send-booking-email", {
+          body: {
+            type: "confirmation",
+            bookingId: "new",
+            clientEmail: user.email,
+            clientName: user.email,
+            businessName: business.name,
+            serviceName: service?.name || "",
+            bookingDate: format(selectedDate, "dd.MM.yyyy"),
+            bookingTime: selectedTime,
+          },
+        });
+      } catch (emailError) {
+        console.error("Email sending failed:", emailError);
+        // Don't throw - booking is already created
+      }
+
       toast.success("Rezervacija je uspješno kreirana!");
       onOpenChange(false);
       resetForm();
