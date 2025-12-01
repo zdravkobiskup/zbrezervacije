@@ -25,6 +25,7 @@ interface BookingDialogProps {
   business: {
     id: string;
     name: string;
+    working_hours?: any;
   };
 }
 
@@ -156,18 +157,40 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
   const selectedServiceData = services.find((s) => s.id === selectedService);
 
   const getAvailableSlots = () => {
-    if (!selectedServiceData) return timeSlots;
+    if (!selectedServiceData || !selectedDate) return [];
+
+    // Get working hours for the selected day
+    const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    const dayName = dayNames[selectedDate.getDay()];
+    const workingHoursForDay = business.working_hours?.[dayName];
+
+    if (!workingHoursForDay || workingHoursForDay === "closed") {
+      return [];
+    }
+
+    // Parse working hours (e.g., "09:00-17:00")
+    const [startTime, endTime] = workingHoursForDay.split("-");
+    const [startHour, startMin] = startTime.split(":").map(Number);
+    const [endHour, endMin] = endTime.split(":").map(Number);
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = endHour * 60 + endMin;
 
     const serviceDuration = selectedServiceData.duration_minutes;
     const slotsNeeded = Math.ceil(serviceDuration / 30);
 
     return timeSlots.filter((slot) => {
-      // Check if this slot and all subsequent required slots are available
       const [hours, minutes] = slot.split(':').map(Number);
-      const startMinutes = hours * 60 + minutes;
+      const slotStartMinutes = hours * 60 + minutes;
+      const slotEndMinutes = slotStartMinutes + serviceDuration;
 
+      // Check if slot is within working hours
+      if (slotStartMinutes < startMinutes || slotEndMinutes > endMinutes) {
+        return false;
+      }
+
+      // Check if this slot and all subsequent required slots are available
       for (let i = 0; i < slotsNeeded; i++) {
-        const checkMinutes = startMinutes + (i * 30);
+        const checkMinutes = slotStartMinutes + (i * 30);
         const checkHours = Math.floor(checkMinutes / 60);
         const checkMins = checkMinutes % 60;
         const checkTime = `${checkHours.toString().padStart(2, "0")}:${checkMins.toString().padStart(2, "0")}`;
@@ -229,24 +252,35 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
           {selectedDate && selectedService && (
             <div className="space-y-2">
               <Label>Odaberite vrijeme *</Label>
-              <Select value={selectedTime} onValueChange={setSelectedTime}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Odaberite vrijeme" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableSlots.length > 0 ? (
-                    availableSlots.map((time) => (
-                      <SelectItem key={time} value={time}>
-                        {time}
+              {availableSlots.length === 0 && selectedDate && business.working_hours && (() => {
+                const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+                const dayName = dayNames[selectedDate.getDay()];
+                const workingHoursForDay = business.working_hours[dayName];
+                return workingHoursForDay === "closed";
+              })() ? (
+                <p className="text-sm text-muted-foreground py-2">
+                  Tvrtka je zatvorena na odabrani dan.
+                </p>
+              ) : (
+                <Select value={selectedTime} onValueChange={setSelectedTime}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Odaberite vrijeme" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableSlots.length > 0 ? (
+                      availableSlots.map((time) => (
+                        <SelectItem key={time} value={time}>
+                          {time}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-slots" disabled>
+                        Nema slobodnih termina
                       </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="no-slots" disabled>
-                      Nema slobodnih termina
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
+                    )}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           )}
 
