@@ -21,6 +21,7 @@ export type Database = {
           business_id: string
           client_id: string
           created_at: string | null
+          employee_id: string | null
           id: string
           notes: string | null
           service_id: string
@@ -33,6 +34,7 @@ export type Database = {
           business_id: string
           client_id: string
           created_at?: string | null
+          employee_id?: string | null
           id?: string
           notes?: string | null
           service_id: string
@@ -45,6 +47,7 @@ export type Database = {
           business_id?: string
           client_id?: string
           created_at?: string | null
+          employee_id?: string | null
           id?: string
           notes?: string | null
           service_id?: string
@@ -57,6 +60,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
           {
@@ -115,6 +125,50 @@ export type Database = {
           working_hours?: Json | null
         }
         Relationships: []
+      }
+      employees: {
+        Row: {
+          business_id: string
+          color: string
+          created_at: string | null
+          email: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          phone: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          business_id: string
+          color?: string
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          business_id?: string
+          color?: string
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          phone?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

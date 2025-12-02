@@ -19,6 +19,12 @@ interface Service {
   price: number;
 }
 
+interface Employee {
+  id: string;
+  name: string;
+  color: string;
+}
+
 interface BookingDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -37,8 +43,10 @@ const timeSlots = Array.from({ length: 28 }, (_, i) => {
 
 const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => {
   const [services, setServices] = useState<Service[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedService, setSelectedService] = useState<string>("");
+  const [selectedEmployee, setSelectedEmployee] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [notes, setNotes] = useState("");
@@ -47,6 +55,7 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
   useEffect(() => {
     if (open) {
       loadServices();
+      loadEmployees();
     }
   }, [open, business.id]);
 
@@ -54,7 +63,7 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
     if (selectedDate) {
       loadBookedSlots();
     }
-  }, [selectedDate, business.id]);
+  }, [selectedDate, business.id, selectedEmployee]);
 
   const loadServices = async () => {
     try {
@@ -71,16 +80,38 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
     }
   };
 
+  const loadEmployees = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("employees")
+        .select("id, name, color")
+        .eq("business_id", business.id)
+        .eq("is_active", true);
+
+      if (error) throw error;
+      setEmployees(data || []);
+    } catch (error: any) {
+      console.error("Error loading employees:", error);
+    }
+  };
+
   const loadBookedSlots = async () => {
     if (!selectedDate) return;
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("bookings")
-        .select("booking_time, service_id, services(duration_minutes)")
+        .select("booking_time, service_id, employee_id, services(duration_minutes)")
         .eq("business_id", business.id)
         .eq("booking_date", format(selectedDate, "yyyy-MM-dd"))
         .in("status", ["pending", "confirmed"]);
+
+      // If an employee is selected, only check their bookings
+      if (selectedEmployee) {
+        query = query.eq("employee_id", selectedEmployee);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -127,6 +158,7 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
         {
           business_id: business.id,
           service_id: selectedService,
+          employee_id: selectedEmployee || null,
           client_id: user.id,
           booking_date: format(selectedDate, "yyyy-MM-dd"),
           booking_time: selectedTime,
@@ -169,6 +201,7 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
 
   const resetForm = () => {
     setSelectedService("");
+    setSelectedEmployee("");
     setSelectedDate(undefined);
     setSelectedTime("");
     setNotes("");
@@ -256,6 +289,31 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
               <p className="text-sm text-muted-foreground">{selectedServiceData.description}</p>
             )}
           </div>
+
+          {employees.length > 0 && (
+            <div className="space-y-2">
+              <Label>Odaberite zaposlenika (opcionalno)</Label>
+              <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Bilo koji zaposlenik" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Bilo koji zaposlenik</SelectItem>
+                  {employees.map((employee) => (
+                    <SelectItem key={employee.id} value={employee.id}>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: employee.color }}
+                        />
+                        {employee.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Odaberite datum *</Label>
