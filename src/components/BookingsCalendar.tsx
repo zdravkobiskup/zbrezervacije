@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, GripVertical } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns";
 import { hr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -14,8 +14,9 @@ interface Booking {
   booking_time: string;
   status: string;
   employee_id: string | null;
-  service: { name: string } | null;
-  client: { full_name: string | null; email: string } | null;
+  service_name: string | null;
+  client_name: string | null;
+  client_email: string | null;
 }
 
 interface Employee {
@@ -49,6 +50,7 @@ const BookingsCalendar = ({ businessId }: BookingsCalendarProps) => {
   const [selectedEmployee, setSelectedEmployee] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [draggedBooking, setDraggedBooking] = useState<Booking | null>(null);
 
   useEffect(() => {
     loadData();
@@ -59,22 +61,36 @@ const BookingsCalendar = ({ businessId }: BookingsCalendarProps) => {
       const monthStart = startOfMonth(currentDate);
       const monthEnd = endOfMonth(currentDate);
 
-      const [bookingsRes, employeesRes] = await Promise.all([
-        supabase
-          .from("bookings")
-          .select(`
-            id,
-            booking_date,
-            booking_time,
-            status,
-            employee_id,
-            service:services(name),
-            client:profiles!bookings_client_id_fkey(full_name, email)
-          `)
-          .eq("business_id", businessId)
-          .gte("booking_date", format(monthStart, "yyyy-MM-dd"))
-          .lte("booking_date", format(monthEnd, "yyyy-MM-dd"))
-          .order("booking_time"),
+      // First, get bookings
+      const { data: bookingsData, error: bookingsError } = await supabase
+        .from("bookings")
+        .select(`
+          id,
+          booking_date,
+          booking_time,
+          status,
+          employee_id,
+          service_id,
+          client_id
+        `)
+        .eq("business_id", businessId)
+        .gte("booking_date", format(monthStart, "yyyy-MM-dd"))
+        .lte("booking_date", format(monthEnd, "yyyy-MM-dd"))
+        .order("booking_time");
+
+      if (bookingsError) throw bookingsError;
+
+      // Get services and profiles separately
+      const serviceIds = [...new Set((bookingsData || []).map(b => b.service_id).filter(Boolean))];
+      const clientIds = [...new Set((bookingsData || []).map(b => b.client_id).filter(Boolean))];
+
+      const [servicesRes, profilesRes, employeesRes] = await Promise.all([
+        serviceIds.length > 0 
+          ? supabase.from("services").select("id, name").in("id", serviceIds)
+          : { data: [], error: null },
+        clientIds.length > 0
+          ? supabase.from("profiles").select("id, full_name, email").in("id", clientIds)
+          : { data: [], error: null },
         supabase
           .from("employees")
           .select("id, name, color")
@@ -82,19 +98,29 @@ const BookingsCalendar = ({ businessId }: BookingsCalendarProps) => {
           .eq("is_active", true)
       ]);
 
-      if (bookingsRes.error) throw bookingsRes.error;
       if (employeesRes.error) throw employeesRes.error;
 
-      // Handle the case where service/client might be arrays
-      const processedBookings = (bookingsRes.data || []).map(booking => ({
-        ...booking,
-        service: Array.isArray(booking.service) ? booking.service[0] : booking.service,
-        client: Array.isArray(booking.client) ? booking.client[0] : booking.client
-      }));
+      const servicesMap = new Map((servicesRes.data || []).map(s => [s.id, s.name]));
+      const profilesMap = new Map((profilesRes.data || []).map(p => [p.id, { full_name: p.full_name, email: p.email }]));
+
+      const processedBookings: Booking[] = (bookingsData || []).map(booking => {
+        const profile = profilesMap.get(booking.client_id);
+        return {
+          id: booking.id,
+          booking_date: booking.booking_date,
+          booking_time: booking.booking_time,
+          status: booking.status || "pending",
+          employee_id: booking.employee_id,
+          service_name: servicesMap.get(booking.service_id) || null,
+          client_name: profile?.full_name || null,
+          client_email: profile?.email || null
+        };
+      });
 
       setBookings(processedBookings);
       setEmployees(employeesRes.data || []);
     } catch (error: any) {
+      console.error("Calendar load error:", error);
       toast.error("Greška prilikom učitavanja podataka");
     } finally {
       setLoading(false);
@@ -115,6 +141,57 @@ const BookingsCalendar = ({ businessId }: BookingsCalendarProps) => {
     const employee = employees.find(e => e.id === employeeId);
     return employee?.color || "#9CA3AF";
   };
+
+  // Drag and drop handlers
+  const handleDragStart = useCallback((e: React.DragEvent, booking: Booking) => {
+    setDraggedBooking(booking);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", booking.id);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent, targetDate: Date) => {
+    e.preventDefault();
+    
+    if (!draggedBooking) return;
+
+    const newDateStr = format(targetDate, "yyyy-MM-dd");
+    
+    if (draggedBooking.booking_date === newDateStr) {
+      setDraggedBooking(null);
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("bookings")
+        .update({ booking_date: newDateStr })
+        .eq("id", draggedBooking.id);
+
+      if (error) throw error;
+
+      toast.success(`Rezervacija premještena na ${format(targetDate, "d. MMMM", { locale: hr })}`);
+      
+      // Update local state
+      setBookings(prev => prev.map(b => 
+        b.id === draggedBooking.id 
+          ? { ...b, booking_date: newDateStr }
+          : b
+      ));
+    } catch (error: any) {
+      toast.error("Greška prilikom premještanja rezervacije");
+    } finally {
+      setDraggedBooking(null);
+    }
+  }, [draggedBooking]);
+
+  const handleDragEnd = useCallback(() => {
+    setDraggedBooking(null);
+  }, []);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -184,6 +261,10 @@ const BookingsCalendar = ({ businessId }: BookingsCalendarProps) => {
             <span>{label}</span>
           </div>
         ))}
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <GripVertical className="w-4 h-4" />
+          <span>Povucite rezervaciju za premještanje</span>
+        </div>
       </div>
 
       {/* Calendar Grid */}
@@ -206,16 +287,20 @@ const BookingsCalendar = ({ businessId }: BookingsCalendarProps) => {
               const isCurrentMonth = isSameMonth(day, currentDate);
               const isSelected = selectedDay && isSameDay(day, selectedDay);
               const isToday = isSameDay(day, new Date());
+              const isDragTarget = draggedBooking && draggedBooking.booking_date !== format(day, "yyyy-MM-dd");
 
               return (
                 <div
                   key={day.toISOString()}
                   onClick={() => setSelectedDay(isSelected ? null : day)}
+                  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, day)}
                   className={`
-                    min-h-[80px] p-1 border rounded-lg cursor-pointer transition-colors
+                    min-h-[80px] p-1 border rounded-lg cursor-pointer transition-all
                     ${!isCurrentMonth ? "bg-muted/30 text-muted-foreground" : "bg-card"}
                     ${isSelected ? "ring-2 ring-primary" : ""}
                     ${isToday ? "border-primary" : "border-border"}
+                    ${isDragTarget ? "bg-primary/10 border-primary border-dashed" : ""}
                     hover:bg-muted/50
                   `}
                 >
@@ -226,11 +311,19 @@ const BookingsCalendar = ({ businessId }: BookingsCalendarProps) => {
                     {dayBookings.slice(0, 3).map((booking) => (
                       <div
                         key={booking.id}
-                        className="text-xs px-1 py-0.5 rounded truncate text-white"
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, booking)}
+                        onDragEnd={handleDragEnd}
+                        className={`
+                          text-xs px-1 py-0.5 rounded truncate text-white cursor-grab active:cursor-grabbing
+                          flex items-center gap-1 hover:opacity-90 transition-opacity
+                          ${draggedBooking?.id === booking.id ? "opacity-50" : ""}
+                        `}
                         style={{ backgroundColor: getEmployeeColor(booking.employee_id) }}
-                        title={`${booking.booking_time} - ${booking.service?.name || "Usluga"}`}
+                        title={`${booking.booking_time} - ${booking.service_name || "Usluga"} (povucite za premještanje)`}
                       >
-                        {booking.booking_time.slice(0, 5)}
+                        <GripVertical className="w-3 h-3 flex-shrink-0" />
+                        <span className="truncate">{booking.booking_time.slice(0, 5)}</span>
                       </div>
                     ))}
                     {dayBookings.length > 3 && (
@@ -248,7 +341,7 @@ const BookingsCalendar = ({ businessId }: BookingsCalendarProps) => {
 
       {/* Selected Day Details */}
       {selectedDay && (
-        <Card>
+        <Card className="animate-fade-in">
           <CardHeader>
             <CardTitle className="text-base">
               Rezervacije za {format(selectedDay, "d. MMMM yyyy", { locale: hr })}
@@ -264,22 +357,30 @@ const BookingsCalendar = ({ businessId }: BookingsCalendarProps) => {
                   return (
                     <div
                       key={booking.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border"
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, booking)}
+                      onDragEnd={handleDragEnd}
+                      className={`
+                        flex items-center gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing
+                        hover:bg-muted/50 transition-colors
+                        ${draggedBooking?.id === booking.id ? "opacity-50" : ""}
+                      `}
                     >
+                      <GripVertical className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                       <div
-                        className="w-1 h-12 rounded-full"
+                        className="w-1 h-12 rounded-full flex-shrink-0"
                         style={{ backgroundColor: getEmployeeColor(booking.employee_id) }}
                       />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-medium">{booking.booking_time.slice(0, 5)}</span>
                           <span className={`px-2 py-0.5 rounded-full text-xs text-white ${STATUS_COLORS[booking.status || "pending"]}`}>
                             {STATUS_LABELS[booking.status || "pending"]}
                           </span>
                         </div>
-                        <p className="text-sm">{booking.service?.name || "Usluga"}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {booking.client?.full_name || booking.client?.email || "Klijent"}
+                        <p className="text-sm truncate">{booking.service_name || "Usluga"}</p>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {booking.client_name || booking.client_email || "Klijent"}
                           {employee && ` • ${employee.name}`}
                         </p>
                       </div>
