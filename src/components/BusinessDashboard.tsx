@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Store, Calendar, Settings } from "lucide-react";
+import { Plus, Store, Calendar, Settings, Users } from "lucide-react";
 import { toast } from "sonner";
 import BusinessSetup from "./BusinessSetup";
 import ServiceManagement from "./ServiceManagement";
 import BookingsList from "./BookingsList";
+import BookingsCalendar from "./BookingsCalendar";
+import EmployeeManagement from "./EmployeeManagement";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const BusinessDashboard = () => {
@@ -85,18 +87,34 @@ const BusinessDashboard = () => {
         </Button>
       </div>
 
-      <Tabs defaultValue="services" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="services">Usluge</TabsTrigger>
+      <Tabs defaultValue="calendar" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="calendar" className="gap-2">
+            <Calendar className="w-4 h-4 hidden sm:inline" />
+            Kalendar
+          </TabsTrigger>
           <TabsTrigger value="bookings">Rezervacije</TabsTrigger>
+          <TabsTrigger value="services">Usluge</TabsTrigger>
+          <TabsTrigger value="employees" className="gap-2">
+            <Users className="w-4 h-4 hidden sm:inline" />
+            Zaposlenici
+          </TabsTrigger>
         </TabsList>
+        
+        <TabsContent value="calendar" className="mt-6">
+          <BookingsCalendar businessId={business.id} />
+        </TabsContent>
+        
+        <TabsContent value="bookings" className="mt-6">
+          <BookingsList businessId={business.id} isBusinessView={true} />
+        </TabsContent>
         
         <TabsContent value="services" className="mt-6">
           <ServiceManagement businessId={business.id} />
         </TabsContent>
         
-        <TabsContent value="bookings" className="mt-6">
-          <BookingsList businessId={business.id} isBusinessView={true} />
+        <TabsContent value="employees" className="mt-6">
+          <EmployeeManagement businessId={business.id} />
         </TabsContent>
       </Tabs>
     </div>
