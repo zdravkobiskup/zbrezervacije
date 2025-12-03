@@ -22,11 +22,8 @@ const handler = async (req: Request): Promise<Response> => {
     const now = new Date();
     const oneDayLater = new Date(now);
     oneDayLater.setDate(oneDayLater.getDate() + 1);
-    
-    const sixHoursLater = new Date(now);
-    sixHoursLater.setHours(sixHoursLater.getHours() + 6);
 
-    // Get bookings for reminders (24h and 6h before)
+    // Get bookings for reminders (without profiles join - fetch separately)
     const { data: bookings, error } = await supabase
       .from("bookings")
       .select(`
@@ -34,9 +31,9 @@ const handler = async (req: Request): Promise<Response> => {
         booking_date,
         booking_time,
         status,
-        businesses(name),
-        services(name),
-        profiles(email, full_name)
+        client_id,
+        business_id,
+        service_id
       `)
       .in("status", ["pending", "confirmed"])
       .gte("booking_date", now.toISOString().split('T')[0])
@@ -58,9 +55,16 @@ const handler = async (req: Request): Promise<Response> => {
 
         console.log(`Booking ${booking.id}: ${hoursUntilBooking.toFixed(2)} hours until appointment`);
 
-        const profile = Array.isArray(booking.profiles) ? booking.profiles[0] : booking.profiles;
-        const business = Array.isArray(booking.businesses) ? booking.businesses[0] : booking.businesses;
-        const service = Array.isArray(booking.services) ? booking.services[0] : booking.services;
+        // Fetch related data separately
+        const [profileResult, businessResult, serviceResult] = await Promise.all([
+          supabase.from("profiles").select("email, full_name").eq("id", booking.client_id).maybeSingle(),
+          supabase.from("businesses").select("name").eq("id", booking.business_id).maybeSingle(),
+          supabase.from("services").select("name").eq("id", booking.service_id).maybeSingle()
+        ]);
+
+        const profile = profileResult.data;
+        const business = businessResult.data;
+        const service = serviceResult.data;
 
         // Send 24h reminder if between 23-25 hours before
         if (hoursUntilBooking >= 23 && hoursUntilBooking <= 25) {
