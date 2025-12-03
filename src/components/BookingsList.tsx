@@ -4,9 +4,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Calendar, Clock, User, Store, CheckCircle, XCircle } from "lucide-react";
+import { Calendar, Clock, User, Store, CheckCircle, XCircle, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { hr } from "date-fns/locale";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Booking {
   id: string;
@@ -144,6 +155,44 @@ const BookingsList = ({ businessId, isBusinessView }: BookingsListProps) => {
     }
   };
 
+  const cancelBooking = async (bookingId: string) => {
+    try {
+      const booking = bookings.find(b => b.id === bookingId);
+      if (!booking) return;
+
+      const { error } = await supabase
+        .from("bookings")
+        .delete()
+        .eq("id", bookingId);
+
+      if (error) throw error;
+
+      // Send cancellation email
+      try {
+        await supabase.functions.invoke("send-booking-email", {
+          body: {
+            type: "status_change",
+            bookingId: bookingId,
+            clientEmail: booking.profiles.email,
+            clientName: booking.profiles.full_name || "Korisnik",
+            businessName: booking.businesses.name,
+            serviceName: booking.services.name,
+            bookingDate: format(new Date(booking.booking_date), "dd.MM.yyyy"),
+            bookingTime: booking.booking_time,
+            status: "cancelled",
+          },
+        });
+      } catch (emailError) {
+        console.error("Email sending failed:", emailError);
+      }
+
+      toast.success("Rezervacija je otkazana!");
+      loadBookings();
+    } catch (error: any) {
+      toast.error("Greška prilikom otkazivanja rezervacije");
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-8">Učitavanje...</div>;
   }
@@ -208,6 +257,7 @@ const BookingsList = ({ businessId, isBusinessView }: BookingsListProps) => {
               )}
             </div>
 
+            {/* Business view actions */}
             {isBusinessView && booking.status === "pending" && (
               <div className="flex gap-2 pt-2">
                 <Button
@@ -219,28 +269,81 @@ const BookingsList = ({ businessId, isBusinessView }: BookingsListProps) => {
                   <CheckCircle className="w-4 h-4" />
                   Potvrdi
                 </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1 gap-2"
-                  onClick={() => updateBookingStatus(booking.id, "cancelled")}
-                >
-                  <XCircle className="w-4 h-4" />
-                  Otkaži
-                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="sm" variant="outline" className="flex-1 gap-2">
+                      <XCircle className="w-4 h-4" />
+                      Otkaži
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Otkazati rezervaciju?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Jeste li sigurni da želite otkazati ovu rezervaciju? Ova radnja se ne može poništiti.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Odustani</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => cancelBooking(booking.id)}>
+                        Otkaži rezervaciju
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             )}
 
-            {!isBusinessView && booking.status === "pending" && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="w-full gap-2"
-                onClick={() => updateBookingStatus(booking.id, "cancelled")}
-              >
-                <XCircle className="w-4 h-4" />
-                Otkaži rezervaciju
-              </Button>
+            {/* Business can also cancel confirmed bookings */}
+            {isBusinessView && booking.status === "confirmed" && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="sm" variant="outline" className="w-full gap-2">
+                    <XCircle className="w-4 h-4" />
+                    Otkaži rezervaciju
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Otkazati potvrđenu rezervaciju?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Jeste li sigurni da želite otkazati ovu potvrđenu rezervaciju? Klijent će biti obaviješten.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Odustani</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => cancelBooking(booking.id)}>
+                      Otkaži rezervaciju
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+
+            {/* Client view - can cancel pending or confirmed */}
+            {!isBusinessView && (booking.status === "pending" || booking.status === "confirmed") && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="sm" variant="outline" className="w-full gap-2">
+                    <Trash2 className="w-4 h-4" />
+                    Otkaži rezervaciju
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Otkazati rezervaciju?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Jeste li sigurni da želite otkazati ovu rezervaciju? Ova radnja se ne može poništiti.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Odustani</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => cancelBooking(booking.id)}>
+                      Otkaži rezervaciju
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
           </CardContent>
         </Card>
