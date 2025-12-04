@@ -17,6 +17,8 @@ interface EmailRequest {
   bookingDate: string;
   bookingTime: string;
   status?: string;
+  cancelledByProvider?: boolean;
+  appUrl?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -30,6 +32,8 @@ const handler = async (req: Request): Promise<Response> => {
 
     let subject = "";
     let html = "";
+
+    const appUrl = emailData.appUrl || "https://bookeasy.lovable.app";
 
     switch (emailData.type) {
       case "confirmation":
@@ -84,12 +88,23 @@ const handler = async (req: Request): Promise<Response> => {
         const statusColor = emailData.status === "confirmed" ? "#10b981" : 
                            emailData.status === "cancelled" ? "#ef4444" : "#0D9488";
         
+        // Add rebooking link if cancelled by provider
+        const rebookingSection = (emailData.status === "cancelled" && emailData.cancelledByProvider) ? `
+          <div style="background-color: #dbeafe; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+            <p style="margin: 0 0 15px 0; font-size: 16px;">Želite rezervirati novi termin?</p>
+            <a href="${appUrl}/dashboard" style="display: inline-block; background-color: #0D9488; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+              Rezerviraj novi termin
+            </a>
+          </div>
+        ` : '';
+        
         subject = `Promjena statusa rezervacije - ${statusText}`;
         html = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h1 style="color: ${statusColor};">Status rezervacije je ${statusText}</h1>
             <p>Poštovani/a ${emailData.clientName},</p>
             <p>Status vaše rezervacije je promijenjen na: <strong>${statusText}</strong></p>
+            ${emailData.cancelledByProvider ? '<p><em>Rezervacija je otkazana od strane pružatelja usluge.</em></p>' : ''}
             <div style="background-color: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
               <h2 style="color: ${statusColor}; margin-top: 0;">Detalji rezervacije:</h2>
               <p><strong>Pružatelj usluge:</strong> ${emailData.businessName}</p>
@@ -97,6 +112,7 @@ const handler = async (req: Request): Promise<Response> => {
               <p><strong>Datum:</strong> ${emailData.bookingDate}</p>
               <p><strong>Vrijeme:</strong> ${emailData.bookingTime}</p>
             </div>
+            ${rebookingSection}
             <p>Ako imate bilo kakvih pitanja, slobodno nas kontaktirajte.</p>
             <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
               Srdačan pozdrav,<br>
