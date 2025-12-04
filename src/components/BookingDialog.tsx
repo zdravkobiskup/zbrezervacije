@@ -106,8 +106,8 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
         .eq("booking_date", format(selectedDate, "yyyy-MM-dd"))
         .in("status", ["pending", "confirmed"]);
 
-      // If an employee is selected, only check their bookings
-      if (selectedEmployee) {
+      // If a specific employee is selected, only check their bookings
+      if (selectedEmployee && selectedEmployee !== "any") {
         query = query.eq("employee_id", selectedEmployee);
       }
 
@@ -158,7 +158,7 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
         {
           business_id: business.id,
           service_id: selectedService,
-          employee_id: selectedEmployee || null,
+          employee_id: selectedEmployee && selectedEmployee !== "any" ? selectedEmployee : null,
           client_id: user.id,
           booking_date: format(selectedDate, "yyyy-MM-dd"),
           booking_time: selectedTime,
@@ -298,7 +298,7 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
                   <SelectValue placeholder="Bilo koji zaposlenik" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Bilo koji zaposlenik</SelectItem>
+                  <SelectItem value="any">Bilo koji zaposlenik</SelectItem>
                   {employees.map((employee) => (
                     <SelectItem key={employee.id} value={employee.id}>
                       <div className="flex items-center gap-2">
