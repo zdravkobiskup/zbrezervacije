@@ -126,39 +126,80 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_groups: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          working_hours: Json | null
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          working_hours?: Json | null
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          working_hours?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_groups_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           business_id: string
           color: string
           created_at: string | null
           email: string | null
+          group_id: string | null
           id: string
           is_active: boolean | null
           name: string
           phone: string | null
           updated_at: string | null
+          working_hours: Json | null
         }
         Insert: {
           business_id: string
           color?: string
           created_at?: string | null
           email?: string | null
+          group_id?: string | null
           id?: string
           is_active?: boolean | null
           name: string
           phone?: string | null
           updated_at?: string | null
+          working_hours?: Json | null
         }
         Update: {
           business_id?: string
           color?: string
           created_at?: string | null
           email?: string | null
+          group_id?: string | null
           id?: string
           is_active?: boolean | null
           name?: string
           phone?: string | null
           updated_at?: string | null
+          working_hours?: Json | null
         }
         Relationships: [
           {
@@ -166,6 +207,13 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "employee_groups"
             referencedColumns: ["id"]
           },
         ]
