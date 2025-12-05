@@ -9,16 +9,30 @@ import ServiceManagement from "./ServiceManagement";
 import BookingsList from "./BookingsList";
 import BookingsCalendar from "./BookingsCalendar";
 import EmployeeManagement from "./EmployeeManagement";
+import EmployeeGroupManagement from "./EmployeeGroupManagement";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+interface EmployeeGroup {
+  id: string;
+  name: string;
+  working_hours: Record<string, string> | null;
+}
 
 const BusinessDashboard = () => {
   const [business, setBusiness] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showSetup, setShowSetup] = useState(false);
+  const [groups, setGroups] = useState<EmployeeGroup[]>([]);
 
   useEffect(() => {
     loadBusiness();
   }, []);
+
+  useEffect(() => {
+    if (business?.id) {
+      loadGroups();
+    }
+  }, [business?.id]);
 
   const loadBusiness = async () => {
     try {
@@ -38,6 +52,24 @@ const BusinessDashboard = () => {
       toast.error("Greška prilikom učitavanja podataka");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadGroups = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("employee_groups")
+        .select("*")
+        .eq("business_id", business.id)
+        .order("created_at");
+
+      if (error) throw error;
+      setGroups((data || []).map(g => ({
+        ...g,
+        working_hours: g.working_hours as Record<string, string> | null
+      })));
+    } catch (error: any) {
+      console.error("Error loading groups:", error);
     }
   };
 
@@ -114,7 +146,16 @@ const BusinessDashboard = () => {
         </TabsContent>
         
         <TabsContent value="employees" className="mt-6">
-          <EmployeeManagement businessId={business.id} />
+          <div className="space-y-8">
+            <EmployeeGroupManagement 
+              businessId={business.id} 
+              onGroupsChange={loadGroups}
+            />
+            <EmployeeManagement 
+              businessId={business.id} 
+              groups={groups}
+            />
+          </div>
         </TabsContent>
       </Tabs>
     </div>
