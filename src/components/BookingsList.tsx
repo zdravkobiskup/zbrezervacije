@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Calendar, Clock, User, Store, CheckCircle, XCircle, Trash2 } from "lucide-react";
+import { Calendar, Clock, User, Store, CheckCircle, XCircle, Trash2, UserX, RefreshCw, Check } from "lucide-react";
 import { format, differenceInDays, parseISO } from "date-fns";
 import { hr } from "date-fns/locale";
 import {
@@ -45,18 +45,22 @@ interface BookingsListProps {
   isBusinessView: boolean;
 }
 
-const statusColors = {
+const statusColors: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800",
   confirmed: "bg-green-100 text-green-800",
   cancelled: "bg-red-100 text-red-800",
   completed: "bg-blue-100 text-blue-800",
+  no_show: "bg-gray-100 text-gray-800",
+  rescheduled: "bg-purple-100 text-purple-800",
 };
 
-const statusLabels = {
+const statusLabels: Record<string, string> = {
   pending: "Na čekanju",
   confirmed: "Potvrđeno",
   cancelled: "Otkazano",
   completed: "Završeno",
+  no_show: "Nije došao/la",
+  rescheduled: "Promijenjen termin",
 };
 
 const BookingsList = ({ businessId, isBusinessView }: BookingsListProps) => {
@@ -316,30 +320,59 @@ const BookingsList = ({ businessId, isBusinessView }: BookingsListProps) => {
                 </div>
               )}
 
-              {/* Business can also cancel confirmed bookings */}
+              {/* Business view - status actions for confirmed bookings */}
               {isBusinessView && booking.status === "confirmed" && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button size="sm" variant="outline" className="w-full gap-2">
-                      <XCircle className="w-4 h-4" />
-                      Otkaži rezervaciju
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Otkazati potvrđenu rezervaciju?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Jeste li sigurni da želite otkazati ovu potvrđenu rezervaciju? Klijent će dobiti email s mogućnošću rezervacije novog termina.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Odustani</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => cancelBooking(booking.id, true)}>
-                        Otkaži rezervaciju
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <Button
+                    size="sm"
+                    variant="default"
+                    className="gap-2"
+                    onClick={() => updateBookingStatus(booking.id, "completed")}
+                  >
+                    <Check className="w-4 h-4" />
+                    Završeno
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => updateBookingStatus(booking.id, "no_show")}
+                  >
+                    <UserX className="w-4 h-4" />
+                    Nije došao/la
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => updateBookingStatus(booking.id, "rescheduled")}
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Promijenjen termin
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button size="sm" variant="outline" className="gap-2">
+                        <XCircle className="w-4 h-4" />
+                        Otkaži
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Otkazati potvrđenu rezervaciju?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Jeste li sigurni da želite otkazati ovu potvrđenu rezervaciju? Klijent će dobiti email s mogućnošću rezervacije novog termina.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Odustani</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => cancelBooking(booking.id, true)}>
+                          Otkaži rezervaciju
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               )}
 
               {/* Client view - can cancel pending or confirmed if 3+ days before */}

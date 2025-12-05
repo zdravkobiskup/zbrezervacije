@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Store, Calendar, Settings, Users } from "lucide-react";
+import { Plus, Store, Calendar, Settings, Users, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import BusinessSetup from "./BusinessSetup";
 import ServiceManagement from "./ServiceManagement";
@@ -10,6 +10,7 @@ import BookingsList from "./BookingsList";
 import BookingsCalendar from "./BookingsCalendar";
 import EmployeeManagement from "./EmployeeManagement";
 import EmployeeGroupManagement from "./EmployeeGroupManagement";
+import BookingsReport from "./BookingsReport";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface EmployeeGroup {
@@ -120,16 +121,29 @@ const BusinessDashboard = () => {
       </div>
 
       <Tabs defaultValue="calendar" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="calendar" className="gap-2">
             <Calendar className="w-4 h-4 hidden sm:inline" />
-            Kalendar
+            <span className="hidden sm:inline">Kalendar</span>
+            <span className="sm:hidden">Kal.</span>
           </TabsTrigger>
-          <TabsTrigger value="bookings">Rezervacije</TabsTrigger>
-          <TabsTrigger value="services">Usluge</TabsTrigger>
+          <TabsTrigger value="bookings">
+            <span className="hidden sm:inline">Rezervacije</span>
+            <span className="sm:hidden">Rez.</span>
+          </TabsTrigger>
+          <TabsTrigger value="services">
+            <span className="hidden sm:inline">Usluge</span>
+            <span className="sm:hidden">Usl.</span>
+          </TabsTrigger>
           <TabsTrigger value="employees" className="gap-2">
             <Users className="w-4 h-4 hidden sm:inline" />
-            Zaposlenici
+            <span className="hidden sm:inline">Zaposlenici</span>
+            <span className="sm:hidden">Zap.</span>
+          </TabsTrigger>
+          <TabsTrigger value="reports" className="gap-2">
+            <BarChart3 className="w-4 h-4 hidden sm:inline" />
+            <span className="hidden sm:inline">Izvještaji</span>
+            <span className="sm:hidden">Izv.</span>
           </TabsTrigger>
         </TabsList>
         
@@ -156,6 +170,10 @@ const BusinessDashboard = () => {
               groups={groups}
             />
           </div>
+        </TabsContent>
+
+        <TabsContent value="reports" className="mt-6">
+          <BookingsReport businessId={business.id} />
         </TabsContent>
       </Tabs>
     </div>
