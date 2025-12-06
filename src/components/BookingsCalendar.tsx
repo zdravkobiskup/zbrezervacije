@@ -2,8 +2,9 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, GripVertical } from "lucide-react";
+import { ChevronLeft, ChevronRight, GripVertical, Search } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns";
 import { hr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -51,6 +52,7 @@ const BookingsCalendar = ({ businessId }: BookingsCalendarProps) => {
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [draggedBooking, setDraggedBooking] = useState<Booking | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     loadData();
@@ -132,6 +134,18 @@ const BookingsCalendar = ({ businessId }: BookingsCalendarProps) => {
     return bookings.filter(b => {
       if (b.booking_date !== dateStr) return false;
       if (selectedEmployee !== "all" && b.employee_id !== selectedEmployee) return false;
+      
+      // Apply search filter
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        const matchesSearch = 
+          b.service_name?.toLowerCase().includes(searchLower) ||
+          b.client_name?.toLowerCase().includes(searchLower) ||
+          b.client_email?.toLowerCase().includes(searchLower) ||
+          b.booking_time.includes(searchLower);
+        if (!matchesSearch) return false;
+      }
+      
       return true;
     });
   };
@@ -207,6 +221,15 @@ const BookingsCalendar = ({ businessId }: BookingsCalendarProps) => {
 
   return (
     <div className="space-y-4">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+        <Input
+          placeholder="Pretraži po klijentu, usluzi..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+        />
+      </div>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex items-center gap-2">
           <Button

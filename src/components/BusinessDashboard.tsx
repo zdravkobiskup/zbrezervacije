@@ -2,15 +2,15 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Store, Calendar, Settings, Users, BarChart3 } from "lucide-react";
+import { Plus, Store, Calendar, Settings, Users, BarChart3, Archive } from "lucide-react";
 import { toast } from "sonner";
 import BusinessSetup from "./BusinessSetup";
 import ServiceManagement from "./ServiceManagement";
-import BookingsList from "./BookingsList";
 import BookingsCalendar from "./BookingsCalendar";
 import EmployeeManagement from "./EmployeeManagement";
 import EmployeeGroupManagement from "./EmployeeGroupManagement";
 import BookingsReport from "./BookingsReport";
+import BookingsArchive from "./BookingsArchive";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface EmployeeGroup {
@@ -121,15 +121,16 @@ const BusinessDashboard = () => {
       </div>
 
       <Tabs defaultValue="calendar" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="calendar" className="gap-2">
             <Calendar className="w-4 h-4 hidden sm:inline" />
             <span className="hidden sm:inline">Kalendar</span>
             <span className="sm:hidden">Kal.</span>
           </TabsTrigger>
-          <TabsTrigger value="bookings">
-            <span className="hidden sm:inline">Rezervacije</span>
-            <span className="sm:hidden">Rez.</span>
+          <TabsTrigger value="archive" className="gap-2">
+            <Archive className="w-4 h-4 hidden sm:inline" />
+            <span className="hidden sm:inline">Arhiva</span>
+            <span className="sm:hidden">Arh.</span>
           </TabsTrigger>
           <TabsTrigger value="services">
             <span className="hidden sm:inline">Usluge</span>
@@ -151,8 +152,8 @@ const BusinessDashboard = () => {
           <BookingsCalendar businessId={business.id} />
         </TabsContent>
         
-        <TabsContent value="bookings" className="mt-6">
-          <BookingsList businessId={business.id} isBusinessView={true} />
+        <TabsContent value="archive" className="mt-6">
+          <BookingsArchive businessId={business.id} isBusinessView={true} />
         </TabsContent>
         
         <TabsContent value="services" className="mt-6">
