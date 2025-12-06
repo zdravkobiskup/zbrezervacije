@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 interface EmailRequest {
-  type: "confirmation" | "status_change" | "reminder";
+  type: "confirmation" | "status_change" | "reminder" | "no_show_followup";
   bookingId: string;
   clientEmail: string;
   clientName: string;
@@ -74,6 +74,37 @@ const handler = async (req: Request): Promise<Response> => {
               <p><strong>Vrijeme:</strong> ${emailData.bookingTime}</p>
             </div>
             <p>Vidimo se uskoro!</p>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+              Srdačan pozdrav,<br>
+              BookEasy tim
+            </p>
+          </div>
+        `;
+        break;
+
+      case "no_show_followup":
+        subject = `Propušteni termin - ${emailData.businessName}`;
+        html = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #EF4444;">Propustili ste termin</h1>
+            <p>Poštovani/a ${emailData.clientName},</p>
+            <p>Primijetili smo da niste došli na zakazani termin:</p>
+            <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h2 style="color: #EF4444; margin-top: 0;">Detalji propuštenog termina:</h2>
+              <p><strong>Pružatelj usluge:</strong> ${emailData.businessName}</p>
+              <p><strong>Usluga:</strong> ${emailData.serviceName}</p>
+              <p><strong>Datum:</strong> ${emailData.bookingDate}</p>
+              <p><strong>Vrijeme:</strong> ${emailData.bookingTime}</p>
+            </div>
+            <div style="background-color: #dbeafe; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center;">
+              <p style="margin: 0 0 15px 0; font-size: 16px;">Želite li rezervirati novi termin?</p>
+              <a href="${appUrl}/dashboard" style="display: inline-block; background-color: #0D9488; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                Rezerviraj novi termin
+              </a>
+            </div>
+            <p style="color: #6b7280; font-size: 14px;">
+              Napomena: Ako ste imali valjani razlog za nedolazak, molimo vas da nas kontaktirate kako bismo to zabilježili.
+            </p>
             <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
               Srdačan pozdrav,<br>
               BookEasy tim
