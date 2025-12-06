@@ -1,8 +1,8 @@
-import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import BusinessList from "./BusinessList";
-import BookingsList from "./BookingsList";
-import { Calendar, Store } from "lucide-react";
+import ClientBookingsCalendar from "./ClientBookingsCalendar";
+import BookingsArchive from "./BookingsArchive";
+import { Calendar, Store, Archive } from "lucide-react";
 
 const ClientDashboard = () => {
   return (
@@ -13,14 +13,21 @@ const ClientDashboard = () => {
       </div>
 
       <Tabs defaultValue="businesses" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="businesses" className="gap-2">
-            <Store className="w-4 h-4" />
-            Pružatelji usluga
+            <Store className="w-4 h-4 hidden sm:inline" />
+            <span className="hidden sm:inline">Pružatelji</span>
+            <span className="sm:hidden">Pruž.</span>
           </TabsTrigger>
           <TabsTrigger value="bookings" className="gap-2">
-            <Calendar className="w-4 h-4" />
-            Moje rezervacije
+            <Calendar className="w-4 h-4 hidden sm:inline" />
+            <span className="hidden sm:inline">Rezervacije</span>
+            <span className="sm:hidden">Rez.</span>
+          </TabsTrigger>
+          <TabsTrigger value="archive" className="gap-2">
+            <Archive className="w-4 h-4 hidden sm:inline" />
+            <span className="hidden sm:inline">Arhiva</span>
+            <span className="sm:hidden">Arh.</span>
           </TabsTrigger>
         </TabsList>
         
@@ -29,7 +36,11 @@ const ClientDashboard = () => {
         </TabsContent>
         
         <TabsContent value="bookings" className="mt-6">
-          <BookingsList isBusinessView={false} />
+          <ClientBookingsCalendar />
+        </TabsContent>
+
+        <TabsContent value="archive" className="mt-6">
+          <BookingsArchive isBusinessView={false} />
         </TabsContent>
       </Tabs>
     </div>
