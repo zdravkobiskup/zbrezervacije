@@ -22,8 +22,12 @@ const handler = async (req: Request): Promise<Response> => {
     const now = new Date();
     const oneDayLater = new Date(now);
     oneDayLater.setDate(oneDayLater.getDate() + 1);
+    
+    // Calculate yesterday for no-show follow-ups
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
 
-    // Get bookings for reminders (without profiles join - fetch separately)
+    // Get bookings for upcoming reminders
     const { data: bookings, error } = await supabase
       .from("bookings")
       .select(`
@@ -44,7 +48,27 @@ const handler = async (req: Request): Promise<Response> => {
       throw error;
     }
 
-    console.log(`Found ${bookings?.length || 0} bookings to check`);
+    // Get no-show bookings from the last 24 hours to send follow-up emails
+    const { data: noShowBookings, error: noShowError } = await supabase
+      .from("bookings")
+      .select(`
+        id,
+        booking_date,
+        booking_time,
+        status,
+        client_id,
+        business_id,
+        service_id,
+        updated_at
+      `)
+      .eq("status", "no_show")
+      .gte("updated_at", yesterday.toISOString());
+
+    if (noShowError) {
+      console.error("Error fetching no-show bookings:", noShowError);
+    }
+
+    console.log(`Found ${bookings?.length || 0} upcoming bookings and ${noShowBookings?.length || 0} no-show bookings`);
 
     const remindersSent = [];
 
@@ -115,6 +139,52 @@ const handler = async (req: Request): Promise<Response> => {
         }
       } catch (bookingError) {
         console.error(`Error processing booking ${booking.id}:`, bookingError);
+      }
+    }
+
+    // Process no-show follow-up emails
+    for (const booking of noShowBookings || []) {
+      try {
+        const updatedAt = new Date(booking.updated_at);
+        const hoursSinceNoShow = (now.getTime() - updatedAt.getTime()) / (1000 * 60 * 60);
+
+        // Send follow-up email 1-3 hours after being marked as no-show
+        if (hoursSinceNoShow >= 1 && hoursSinceNoShow <= 3) {
+          console.log(`Sending no-show follow-up for booking ${booking.id}`);
+
+          const [profileResult, businessResult, serviceResult] = await Promise.all([
+            supabase.from("profiles").select("email, full_name").eq("id", booking.client_id).maybeSingle(),
+            supabase.from("businesses").select("name").eq("id", booking.business_id).maybeSingle(),
+            supabase.from("services").select("name").eq("id", booking.service_id).maybeSingle()
+          ]);
+
+          const profile = profileResult.data;
+          const business = businessResult.data;
+          const service = serviceResult.data;
+
+          if (profile?.email) {
+            const emailResponse = await supabase.functions.invoke("send-booking-email", {
+              body: {
+                type: "no_show_followup",
+                bookingId: booking.id,
+                clientEmail: profile.email,
+                clientName: profile.full_name || "Korisnik",
+                businessName: business?.name || "",
+                serviceName: service?.name || "",
+                bookingDate: booking.booking_date,
+                bookingTime: booking.booking_time,
+              },
+            });
+
+            if (emailResponse.error) {
+              console.error(`Error sending no-show follow-up for booking ${booking.id}:`, emailResponse.error);
+            } else {
+              remindersSent.push({ bookingId: booking.id, type: "no_show_followup" });
+            }
+          }
+        }
+      } catch (bookingError) {
+        console.error(`Error processing no-show booking ${booking.id}:`, bookingError);
       }
     }
 
