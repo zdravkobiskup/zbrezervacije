@@ -480,17 +480,21 @@ const BookingsCalendar = ({ businessId, businessName }: BookingsCalendarProps) =
                 {getBookingsForDay(selectedDay).map((booking) => {
                   const employee = employees.find(e => e.id === booking.employee_id);
                   const canModify = booking.status !== "cancelled" && booking.status !== "completed";
-                  return (
+                    const isPending = booking.status === "pending";
+                    return (
                     <div
                       key={booking.id}
                       draggable={canModify}
                       onDragStart={(e) => canModify && handleDragStart(e, booking)}
                       onDragEnd={handleDragEnd}
+                      onClick={() => isPending && handleStatusChange(booking, "confirmed")}
                       className={`
                         flex items-center gap-3 p-3 rounded-lg border transition-colors
                         ${canModify ? "cursor-grab active:cursor-grabbing hover:bg-muted/50" : ""}
+                        ${isPending ? "cursor-pointer hover:bg-green-50 hover:border-green-300 dark:hover:bg-green-950" : ""}
                         ${draggedBooking?.id === booking.id ? "opacity-50" : ""}
                       `}
+                      title={isPending ? "Kliknite za potvrdu rezervacije" : undefined}
                     >
                       {canModify && <GripVertical className="w-5 h-5 text-muted-foreground flex-shrink-0" />}
                       <div
@@ -503,6 +507,12 @@ const BookingsCalendar = ({ businessId, businessName }: BookingsCalendarProps) =
                           <span className={`px-2 py-0.5 rounded-full text-xs text-white ${STATUS_COLORS[booking.status || "pending"]}`}>
                             {STATUS_LABELS[booking.status || "pending"]}
                           </span>
+                          {isPending && (
+                            <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3" />
+                              Klikni za potvrdu
+                            </span>
+                          )}
                         </div>
                         <p className="text-sm truncate">{booking.service_name || "Usluga"}</p>
                         <p className="text-sm text-muted-foreground truncate">
@@ -512,26 +522,26 @@ const BookingsCalendar = ({ businessId, businessName }: BookingsCalendarProps) =
                       </div>
                       {canModify && (
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <Button variant="ghost" size="icon" className="flex-shrink-0">
                               <MoreVertical className="w-4 h-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleStatusChange(booking, "confirmed")}>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStatusChange(booking, "confirmed"); }}>
                               <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
                               Potvrdi
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusChange(booking, "completed")}>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStatusChange(booking, "completed"); }}>
                               <CheckCheck className="w-4 h-4 mr-2 text-blue-500" />
                               Označi kao završeno
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusChange(booking, "no_show")}>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStatusChange(booking, "no_show"); }}>
                               <Clock className="w-4 h-4 mr-2 text-gray-500" />
                               Nije došao/la
                             </DropdownMenuItem>
                             <DropdownMenuItem 
-                              onClick={() => openCancelDialog(booking)}
+                              onClick={(e) => { e.stopPropagation(); openCancelDialog(booking); }}
                               className="text-red-600"
                             >
                               <XCircle className="w-4 h-4 mr-2" />
