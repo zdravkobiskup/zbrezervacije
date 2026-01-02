@@ -54,10 +54,10 @@ const Index = () => {
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300">
             <HeroButton variant="primary" onClick={() => navigate("/auth")}>
-              Započnite besplatno
+              Prijavi se
             </HeroButton>
             <HeroButton variant="secondary" onClick={() => navigate("/auth")}>
-              Prijavite se
+              Registriraj se
             </HeroButton>
           </div>
         </div>

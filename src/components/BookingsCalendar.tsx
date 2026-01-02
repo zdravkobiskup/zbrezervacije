@@ -4,7 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, GripVertical, Search } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { ChevronLeft, ChevronRight, GripVertical, Search, MoreVertical, CheckCircle, XCircle, Clock, CheckCheck } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns";
 import { hr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -18,6 +20,7 @@ interface Booking {
   service_name: string | null;
   client_name: string | null;
   client_email: string | null;
+  business_name?: string;
 }
 
 interface Employee {
@@ -28,23 +31,26 @@ interface Employee {
 
 interface BookingsCalendarProps {
   businessId: string;
+  businessName?: string;
 }
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-500",
   confirmed: "bg-green-500",
   cancelled: "bg-red-500",
-  completed: "bg-blue-500"
+  completed: "bg-blue-500",
+  no_show: "bg-gray-500"
 };
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "Na čekanju",
   confirmed: "Potvrđeno",
   cancelled: "Otkazano",
-  completed: "Završeno"
+  completed: "Završeno",
+  no_show: "Nije došao/la"
 };
 
-const BookingsCalendar = ({ businessId }: BookingsCalendarProps) => {
+const BookingsCalendar = ({ businessId, businessName }: BookingsCalendarProps) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -53,6 +59,8 @@ const BookingsCalendar = ({ businessId }: BookingsCalendarProps) => {
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [draggedBooking, setDraggedBooking] = useState<Booking | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [bookingToCancel, setBookingToCancel] = useState<Booking | null>(null);
 
   useEffect(() => {
     loadData();
@@ -127,6 +135,100 @@ const BookingsCalendar = ({ businessId }: BookingsCalendarProps) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleStatusChange = async (booking: Booking, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("bookings")
+        .update({ status: newStatus })
+        .eq("id", booking.id);
+
+      if (error) throw error;
+
+      toast.success(`Status promijenjen na: ${STATUS_LABELS[newStatus]}`);
+
+      // Send email notification for status change
+      if (booking.client_email) {
+        try {
+          await supabase.functions.invoke("send-booking-email", {
+            body: {
+              type: "status_change",
+              bookingId: booking.id,
+              clientEmail: booking.client_email,
+              clientName: booking.client_name || "Klijent",
+              businessName: businessName || "Pružatelj usluge",
+              serviceName: booking.service_name || "Usluga",
+              bookingDate: format(new Date(booking.booking_date), "d. MMMM yyyy", { locale: hr }),
+              bookingTime: booking.booking_time,
+              status: newStatus,
+              cancelledByProvider: false,
+              appUrl: window.location.origin
+            }
+          });
+        } catch (emailError) {
+          console.error("Failed to send status change email:", emailError);
+        }
+      }
+
+      setBookings(prev => prev.map(b =>
+        b.id === booking.id ? { ...b, status: newStatus } : b
+      ));
+    } catch (error: any) {
+      toast.error("Greška prilikom promjene statusa");
+    }
+  };
+
+  const handleCancelBooking = async () => {
+    if (!bookingToCancel) return;
+
+    try {
+      const { error } = await supabase
+        .from("bookings")
+        .update({ status: "cancelled" })
+        .eq("id", bookingToCancel.id);
+
+      if (error) throw error;
+
+      toast.success("Rezervacija je otkazana");
+
+      // Send cancellation email with rebooking link
+      if (bookingToCancel.client_email) {
+        try {
+          await supabase.functions.invoke("send-booking-email", {
+            body: {
+              type: "status_change",
+              bookingId: bookingToCancel.id,
+              clientEmail: bookingToCancel.client_email,
+              clientName: bookingToCancel.client_name || "Klijent",
+              businessName: businessName || "Pružatelj usluge",
+              serviceName: bookingToCancel.service_name || "Usluga",
+              bookingDate: format(new Date(bookingToCancel.booking_date), "d. MMMM yyyy", { locale: hr }),
+              bookingTime: bookingToCancel.booking_time,
+              status: "cancelled",
+              cancelledByProvider: true,
+              appUrl: window.location.origin
+            }
+          });
+        } catch (emailError) {
+          console.error("Failed to send cancellation email:", emailError);
+        }
+      }
+
+      setBookings(prev => prev.map(b =>
+        b.id === bookingToCancel.id ? { ...b, status: "cancelled" } : b
+      ));
+    } catch (error: any) {
+      toast.error("Greška prilikom otkazivanja rezervacije");
+    } finally {
+      setCancelDialogOpen(false);
+      setBookingToCancel(null);
+    }
+  };
+
+  const openCancelDialog = (booking: Booking) => {
+    setBookingToCancel(booking);
+    setCancelDialogOpen(true);
   };
 
   const getBookingsForDay = (day: Date) => {
@@ -377,19 +479,20 @@ const BookingsCalendar = ({ businessId }: BookingsCalendarProps) => {
               <div className="space-y-3">
                 {getBookingsForDay(selectedDay).map((booking) => {
                   const employee = employees.find(e => e.id === booking.employee_id);
+                  const canModify = booking.status !== "cancelled" && booking.status !== "completed";
                   return (
                     <div
                       key={booking.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, booking)}
+                      draggable={canModify}
+                      onDragStart={(e) => canModify && handleDragStart(e, booking)}
                       onDragEnd={handleDragEnd}
                       className={`
-                        flex items-center gap-3 p-3 rounded-lg border cursor-grab active:cursor-grabbing
-                        hover:bg-muted/50 transition-colors
+                        flex items-center gap-3 p-3 rounded-lg border transition-colors
+                        ${canModify ? "cursor-grab active:cursor-grabbing hover:bg-muted/50" : ""}
                         ${draggedBooking?.id === booking.id ? "opacity-50" : ""}
                       `}
                     >
-                      <GripVertical className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                      {canModify && <GripVertical className="w-5 h-5 text-muted-foreground flex-shrink-0" />}
                       <div
                         className="w-1 h-12 rounded-full flex-shrink-0"
                         style={{ backgroundColor: getEmployeeColor(booking.employee_id) }}
@@ -407,6 +510,36 @@ const BookingsCalendar = ({ businessId }: BookingsCalendarProps) => {
                           {employee && ` • ${employee.name}`}
                         </p>
                       </div>
+                      {canModify && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="flex-shrink-0">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleStatusChange(booking, "confirmed")}>
+                              <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
+                              Potvrdi
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(booking, "completed")}>
+                              <CheckCheck className="w-4 h-4 mr-2 text-blue-500" />
+                              Označi kao završeno
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleStatusChange(booking, "no_show")}>
+                              <Clock className="w-4 h-4 mr-2 text-gray-500" />
+                              Nije došao/la
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => openCancelDialog(booking)}
+                              className="text-red-600"
+                            >
+                              <XCircle className="w-4 h-4 mr-2" />
+                              Otkaži rezervaciju
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </div>
                   );
                 })}
@@ -415,6 +548,25 @@ const BookingsCalendar = ({ businessId }: BookingsCalendarProps) => {
           </CardContent>
         </Card>
       )}
+
+      {/* Cancel Confirmation Dialog */}
+      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Otkazati rezervaciju?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Jeste li sigurni da želite otkazati ovu rezervaciju? 
+              Klijentu će biti poslana obavijest o otkazivanju s mogućnošću rezerviranja novog termina.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Odustani</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancelBooking} className="bg-red-600 hover:bg-red-700">
+              Otkaži rezervaciju
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
