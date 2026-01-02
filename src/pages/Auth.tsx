@@ -26,13 +26,16 @@ const Auth = () => {
   useEffect(() => {
     // Check if this is a password reset callback
     const isReset = searchParams.get("reset") === "true";
+    
     if (isReset) {
       setShowNewPasswordForm(true);
+      // Don't redirect when in password reset mode
       return;
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session && !showNewPasswordForm) {
+      // Only redirect if not in reset mode
+      if (session && !isReset) {
         navigate("/dashboard");
       }
     });
@@ -40,13 +43,14 @@ const Auth = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY") {
         setShowNewPasswordForm(true);
-      } else if (session && !showNewPasswordForm) {
+      } else if (session && !searchParams.get("reset")) {
+        // Only redirect if not in reset mode
         navigate("/dashboard");
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate, searchParams, showNewPasswordForm]);
+  }, [navigate, searchParams]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
