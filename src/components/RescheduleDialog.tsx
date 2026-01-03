@@ -130,6 +130,15 @@ const RescheduleDialog = ({ open, onOpenChange, booking, onSuccess }: Reschedule
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Niste prijavljeni");
 
+      // Get client name for notification
+      const { data: clientProfile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .single();
+
+      const clientName = clientProfile?.full_name || "Korisnik";
+
       // Update the booking
       const { error } = await supabase
         .from("bookings")
@@ -141,9 +150,9 @@ const RescheduleDialog = ({ open, onOpenChange, booking, onSuccess }: Reschedule
 
       if (error) throw error;
 
-      // Send notification email to provider
+      // Send notification email and in-app notification to provider
       try {
-        // Get business owner email
+        // Get business owner info
         const { data: businessData } = await supabase
           .from("businesses")
           .select("owner_id")
@@ -158,6 +167,7 @@ const RescheduleDialog = ({ open, onOpenChange, booking, onSuccess }: Reschedule
             .single();
 
           if (ownerProfile) {
+            // Send email notification
             await supabase.functions.invoke("send-booking-email", {
               body: {
                 type: "reschedule_notification",
@@ -171,10 +181,19 @@ const RescheduleDialog = ({ open, onOpenChange, booking, onSuccess }: Reschedule
                 bookingTime: selectedTime,
               },
             });
+
+            // Create in-app notification for the provider
+            await supabase.from("notifications").insert({
+              user_id: businessData.owner_id,
+              title: "Termin promijenjen",
+              message: `${clientName} je promijenio/la termin za ${booking.service_name} sa ${booking.booking_date} ${booking.booking_time} na ${format(selectedDate, "dd.MM.yyyy")} ${selectedTime}`,
+              type: "reschedule",
+              related_booking_id: booking.id,
+            });
           }
         }
-      } catch (emailError) {
-        console.error("Email sending failed:", emailError);
+      } catch (notificationError) {
+        console.error("Notification sending failed:", notificationError);
       }
 
       toast.success("Termin je uspješno promijenjen!");
