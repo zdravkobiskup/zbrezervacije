@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import BusinessDashboard from "@/components/BusinessDashboard";
 import ClientDashboard from "@/components/ClientDashboard";
 import AdminDashboard from "@/components/AdminDashboard";
+import NotificationBell from "@/components/NotificationBell";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -87,9 +88,12 @@ const Dashboard = () => {
               </span>
             )}
           </div>
-          <Button variant="outline" onClick={handleSignOut}>
-            Odjavi se
-          </Button>
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <Button variant="outline" onClick={handleSignOut}>
+              Odjavi se
+            </Button>
+          </div>
         </div>
       </header>
 
