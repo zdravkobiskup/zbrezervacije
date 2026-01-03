@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, ChevronRight, Search, Calendar, Clock, Store, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Search, Calendar, Clock, Store, Trash2, RefreshCw } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, isBefore, startOfDay, differenceInDays, parseISO } from "date-fns";
 import { hr } from "date-fns/locale";
 import { toast } from "sonner";
@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import RescheduleDialog from "./RescheduleDialog";
 
 interface Booking {
   id: string;
@@ -30,6 +31,9 @@ interface Booking {
   service_duration: number;
   business_name: string;
   business_address: string;
+  service_id?: string;
+  business_id?: string;
+  employee_id?: string | null;
 }
 
 const statusColors: Record<string, string> = {
@@ -48,6 +52,7 @@ const ClientBookingsCalendar = () => {
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [rescheduleBooking, setRescheduleBooking] = useState<Booking | null>(null);
 
   useEffect(() => {
     loadBookings();
@@ -69,7 +74,8 @@ const ClientBookingsCalendar = () => {
           status,
           notes,
           service_id,
-          business_id
+          business_id,
+          employee_id
         `)
         .eq("client_id", user.id)
         .in("status", ["pending", "confirmed"])
@@ -103,7 +109,10 @@ const ClientBookingsCalendar = () => {
             service_name: service?.name || "Usluga",
             service_duration: service?.duration_minutes || 0,
             business_name: business?.name || "Tvrtka",
-            business_address: business?.address || ""
+            business_address: business?.address || "",
+            service_id: booking.service_id,
+            business_id: booking.business_id,
+            employee_id: booking.employee_id,
           };
         });
 
@@ -119,14 +128,57 @@ const ClientBookingsCalendar = () => {
     }
   };
 
-  const cancelBooking = async (bookingId: string) => {
+  const cancelBooking = async (bookingId: string, booking: Booking) => {
     try {
+      // Get user info first
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: userProfile } = await supabase
+        .from("profiles")
+        .select("full_name, email")
+        .eq("id", user?.id)
+        .single();
+
       const { error } = await supabase
         .from("bookings")
         .delete()
         .eq("id", bookingId);
 
       if (error) throw error;
+
+      // Send notification email to provider
+      try {
+        const { data: businessData } = await supabase
+          .from("businesses")
+          .select("owner_id")
+          .eq("id", booking.business_id)
+          .single();
+
+        if (businessData) {
+          const { data: ownerProfile } = await supabase
+            .from("profiles")
+            .select("email, full_name")
+            .eq("id", businessData.owner_id)
+            .single();
+
+          if (ownerProfile) {
+            await supabase.functions.invoke("send-booking-email", {
+              body: {
+                type: "client_cancelled",
+                clientEmail: ownerProfile.email,
+                clientName: userProfile?.full_name || userProfile?.email || "Kupac",
+                providerName: ownerProfile.full_name || "Pružatelj usluge",
+                businessName: booking.business_name,
+                serviceName: booking.service_name,
+                bookingDate: booking.booking_date,
+                bookingTime: booking.booking_time,
+              },
+            });
+          }
+        }
+      } catch (emailError) {
+        console.error("Email sending failed:", emailError);
+      }
+
       toast.success("Rezervacija je otkazana!");
       loadBookings();
     } catch (error: any) {
@@ -140,6 +192,14 @@ const ClientBookingsCalendar = () => {
     today.setHours(0, 0, 0, 0);
     return differenceInDays(booking, today) >= 3;
   };
+
+  const canReschedule = (bookingDate: string): boolean => {
+    const booking = parseISO(bookingDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return differenceInDays(booking, today) >= 2;
+  };
+
 
   const getBookingsForDay = (day: Date) => {
     const dateStr = format(day, "yyyy-MM-dd");
@@ -294,33 +354,46 @@ const ClientBookingsCalendar = () => {
                         <Clock className="w-3 h-3" /> {booking.booking_time} ({booking.service_duration} min)
                       </span>
                     </div>
-                    {canCancel(booking.booking_date) ? (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button size="sm" variant="outline" className="w-full gap-2">
-                            <Trash2 className="w-4 h-4" /> Otkaži rezervaciju
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Otkazati rezervaciju?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Jeste li sigurni da želite otkazati ovu rezervaciju?
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Odustani</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => cancelBooking(booking.id)}>
-                              Otkaži
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    ) : (
-                      <p className="text-xs text-muted-foreground text-center p-2 bg-muted rounded">
-                        Otkazivanje nije moguće manje od 3 dana prije termina
-                      </p>
-                    )}
+                    <div className="flex flex-col gap-2">
+                      {canReschedule(booking.booking_date) && (
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="w-full gap-2"
+                          onClick={() => setRescheduleBooking(booking)}
+                        >
+                          <RefreshCw className="w-4 h-4" /> Promijeni termin
+                        </Button>
+                      )}
+                      {canCancel(booking.booking_date) ? (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="outline" className="w-full gap-2 text-red-600 hover:text-red-700">
+                              <Trash2 className="w-4 h-4" /> Otkaži rezervaciju
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Otkazati rezervaciju?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Jeste li sigurni da želite otkazati ovu rezervaciju?
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Odustani</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => cancelBooking(booking.id, booking)}>
+                                Otkaži
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      ) : (
+                        <p className="text-xs text-muted-foreground text-center p-2 bg-muted rounded">
+                          Otkazivanje nije moguće manje od 3 dana prije termina
+                          {canReschedule(booking.booking_date) ? "" : " • Promjena termina moguća do 2 dana prije"}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -337,6 +410,13 @@ const ClientBookingsCalendar = () => {
           </CardContent>
         </Card>
       )}
+
+      <RescheduleDialog
+        open={!!rescheduleBooking}
+        onOpenChange={(open) => !open && setRescheduleBooking(null)}
+        booking={rescheduleBooking}
+        onSuccess={loadBookings}
+      />
     </div>
   );
 };
