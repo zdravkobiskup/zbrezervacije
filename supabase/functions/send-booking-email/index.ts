@@ -8,8 +8,8 @@ const corsHeaders = {
 };
 
 interface EmailRequest {
-  type: "confirmation" | "status_change" | "reminder" | "no_show_followup";
-  bookingId: string;
+  type: "confirmation" | "status_change" | "reminder" | "no_show_followup" | "client_cancelled" | "reschedule_notification";
+  bookingId?: string;
   clientEmail: string;
   clientName: string;
   businessName: string;
@@ -19,6 +19,9 @@ interface EmailRequest {
   status?: string;
   cancelledByProvider?: boolean;
   appUrl?: string;
+  providerName?: string;
+  oldDate?: string;
+  oldTime?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -145,6 +148,56 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             ${rebookingSection}
             <p>Ako imate bilo kakvih pitanja, slobodno nas kontaktirajte.</p>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+              Srdačan pozdrav,<br>
+              BookEasy tim
+            </p>
+          </div>
+        `;
+        break;
+
+      case "client_cancelled":
+        subject = `Obavijest: Kupac je otkazao rezervaciju`;
+        html = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #EF4444;">Rezervacija je otkazana od strane kupca</h1>
+            <p>Poštovani/a ${emailData.providerName || "Pružatelju usluge"},</p>
+            <p>Kupac <strong>${emailData.clientName}</strong> je otkazao sljedeću rezervaciju:</p>
+            <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h2 style="color: #EF4444; margin-top: 0;">Detalji otkazane rezervacije:</h2>
+              <p><strong>Tvrtka:</strong> ${emailData.businessName}</p>
+              <p><strong>Usluga:</strong> ${emailData.serviceName}</p>
+              <p><strong>Datum:</strong> ${emailData.bookingDate}</p>
+              <p><strong>Vrijeme:</strong> ${emailData.bookingTime}</p>
+            </div>
+            <p>Ovaj termin je sada slobodan za druge rezervacije.</p>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+              Srdačan pozdrav,<br>
+              BookEasy tim
+            </p>
+          </div>
+        `;
+        break;
+
+      case "reschedule_notification":
+        subject = `Obavijest: Kupac je promijenio termin rezervacije`;
+        html = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h1 style="color: #F97316;">Promjena termina rezervacije</h1>
+            <p>Poštovani/a ${emailData.clientName},</p>
+            <p>Kupac je promijenio termin rezervacije:</p>
+            <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h2 style="color: #EF4444; margin-top: 0;">Stari termin:</h2>
+              <p><strong>Datum:</strong> ${emailData.oldDate}</p>
+              <p><strong>Vrijeme:</strong> ${emailData.oldTime}</p>
+            </div>
+            <div style="background-color: #f0fdfa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h2 style="color: #10b981; margin-top: 0;">Novi termin:</h2>
+              <p><strong>Tvrtka:</strong> ${emailData.businessName}</p>
+              <p><strong>Usluga:</strong> ${emailData.serviceName}</p>
+              <p><strong>Datum:</strong> ${emailData.bookingDate}</p>
+              <p><strong>Vrijeme:</strong> ${emailData.bookingTime}</p>
+            </div>
             <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
               Srdačan pozdrav,<br>
               BookEasy tim
