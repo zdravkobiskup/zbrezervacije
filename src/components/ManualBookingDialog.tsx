@@ -150,8 +150,8 @@ const ManualBookingDialog = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedService || !selectedDate || !selectedTime || !clientName) {
-      toast.error("Molimo ispunite sva obavezna polja");
+    if (!selectedService || !selectedDate || !selectedTime || !clientName.trim()) {
+      toast.error("Molimo unesite ime klijenta, uslugu, datum i vrijeme");
       return;
     }
 
@@ -282,11 +282,10 @@ const ManualBookingDialog = ({
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
                 placeholder="Ime i prezime"
-                required
               />
             </div>
             <div className="space-y-2">
-              <Label>Telefon</Label>
+              <Label>Telefon (opcionalno)</Label>
               <Input
                 value={clientPhone}
                 onChange={(e) => setClientPhone(e.target.value)}
@@ -297,7 +296,7 @@ const ManualBookingDialog = ({
           </div>
 
           <div className="space-y-2">
-            <Label>Email (za slanje potvrde)</Label>
+            <Label>Email (opcionalno - za slanje potvrde)</Label>
             <Input
               value={clientEmail}
               onChange={(e) => setClientEmail(e.target.value)}
@@ -393,7 +392,7 @@ const ManualBookingDialog = ({
           )}
 
           <div className="space-y-2">
-            <Label>Napomena</Label>
+            <Label>Napomena (opcionalno)</Label>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
