@@ -145,7 +145,7 @@ const ClientBookingsCalendar = () => {
 
       if (error) throw error;
 
-      // Send notification email to provider
+      // Send notification email and in-app notification to provider
       try {
         const { data: businessData } = await supabase
           .from("businesses")
@@ -161,6 +161,7 @@ const ClientBookingsCalendar = () => {
             .single();
 
           if (ownerProfile) {
+            // Send email notification
             await supabase.functions.invoke("send-booking-email", {
               body: {
                 type: "client_cancelled",
@@ -172,6 +173,14 @@ const ClientBookingsCalendar = () => {
                 bookingDate: booking.booking_date,
                 bookingTime: booking.booking_time,
               },
+            });
+
+            // Create in-app notification for provider
+            await supabase.from("notifications").insert({
+              user_id: businessData.owner_id,
+              title: "Rezervacija otkazana",
+              message: `${userProfile?.full_name || "Kupac"} je otkazao/la termin za ${booking.service_name} dana ${booking.booking_date} u ${booking.booking_time}`,
+              type: "cancellation",
             });
           }
         }

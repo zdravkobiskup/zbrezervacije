@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ChevronLeft, ChevronRight, GripVertical, Search, MoreVertical, CheckCircle, XCircle, Clock, CheckCheck } from "lucide-react";
+import { ChevronLeft, ChevronRight, GripVertical, Search, MoreVertical, CheckCircle, XCircle, Clock, CheckCheck, Plus } from "lucide-react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns";
 import { hr } from "date-fns/locale";
 import { toast } from "sonner";
+import ManualBookingDialog from "./ManualBookingDialog";
 
 interface Booking {
   id: string;
@@ -20,6 +21,7 @@ interface Booking {
   service_name: string | null;
   client_name: string | null;
   client_email: string | null;
+  client_id: string | null;
   business_name?: string;
 }
 
@@ -32,8 +34,10 @@ interface Employee {
 interface BookingsCalendarProps {
   businessId: string;
   businessName?: string;
+  workingHours?: any;
 }
 
+// Status colors for calendar display
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-yellow-500",
   confirmed: "bg-green-500",
@@ -50,7 +54,7 @@ const STATUS_LABELS: Record<string, string> = {
   no_show: "Nije došao/la"
 };
 
-const BookingsCalendar = ({ businessId, businessName }: BookingsCalendarProps) => {
+const BookingsCalendar = ({ businessId, businessName, workingHours }: BookingsCalendarProps) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -61,6 +65,7 @@ const BookingsCalendar = ({ businessId, businessName }: BookingsCalendarProps) =
   const [searchTerm, setSearchTerm] = useState("");
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [bookingToCancel, setBookingToCancel] = useState<Booking | null>(null);
+  const [manualBookingOpen, setManualBookingOpen] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -86,6 +91,7 @@ const BookingsCalendar = ({ businessId, businessName }: BookingsCalendarProps) =
         .eq("business_id", businessId)
         .gte("booking_date", format(monthStart, "yyyy-MM-dd"))
         .lte("booking_date", format(monthEnd, "yyyy-MM-dd"))
+        .neq("status", "cancelled")
         .order("booking_time");
 
       if (bookingsError) throw bookingsError;
@@ -123,7 +129,8 @@ const BookingsCalendar = ({ businessId, businessName }: BookingsCalendarProps) =
           employee_id: booking.employee_id,
           service_name: servicesMap.get(booking.service_id) || null,
           client_name: profile?.full_name || null,
-          client_email: profile?.email || null
+          client_email: profile?.email || null,
+          client_id: booking.client_id
         };
       });
 
@@ -171,6 +178,21 @@ const BookingsCalendar = ({ businessId, businessName }: BookingsCalendarProps) =
         }
       }
 
+      // Create in-app notification for client about status change
+      if (booking.client_id) {
+        try {
+          await supabase.from("notifications").insert({
+            user_id: booking.client_id,
+            title: "Status rezervacije promijenjen",
+            message: `Vaša rezervacija za ${booking.service_name} kod ${businessName} je označena kao: ${STATUS_LABELS[newStatus]}`,
+            type: "status_change",
+            related_booking_id: booking.id,
+          });
+        } catch (notifError) {
+          console.error("Failed to create notification:", notifError);
+        }
+      }
+
       setBookings(prev => prev.map(b =>
         b.id === booking.id ? { ...b, status: newStatus } : b
       ));
@@ -215,9 +237,23 @@ const BookingsCalendar = ({ businessId, businessName }: BookingsCalendarProps) =
         }
       }
 
-      setBookings(prev => prev.map(b =>
-        b.id === bookingToCancel.id ? { ...b, status: "cancelled" } : b
-      ));
+      // Create in-app notification for client about cancellation
+      if (bookingToCancel.client_id) {
+        try {
+          await supabase.from("notifications").insert({
+            user_id: bookingToCancel.client_id,
+            title: "Rezervacija otkazana",
+            message: `Vaša rezervacija za ${bookingToCancel.service_name} kod ${businessName} dana ${format(new Date(bookingToCancel.booking_date), "d. MMMM yyyy", { locale: hr })} u ${bookingToCancel.booking_time} je otkazana od strane pružatelja usluge.`,
+            type: "cancellation",
+            related_booking_id: bookingToCancel.id,
+          });
+        } catch (notifError) {
+          console.error("Failed to create notification:", notifError);
+        }
+      }
+
+      // Remove cancelled booking from list
+      setBookings(prev => prev.filter(b => b.id !== bookingToCancel.id));
     } catch (error: any) {
       toast.error("Greška prilikom otkazivanja rezervacije");
     } finally {
@@ -250,6 +286,18 @@ const BookingsCalendar = ({ businessId, businessName }: BookingsCalendarProps) =
       
       return true;
     });
+  };
+
+  // Get color based on booking status for calendar display
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      pending: "#EAB308", // yellow-500
+      confirmed: "#22C55E", // green-500
+      cancelled: "#EF4444", // red-500
+      completed: "#3B82F6", // blue-500
+      no_show: "#6B7280", // gray-500
+    };
+    return colors[status] || "#9CA3AF";
   };
 
   const getEmployeeColor = (employeeId: string | null) => {
@@ -354,6 +402,10 @@ const BookingsCalendar = ({ businessId, businessName }: BookingsCalendarProps) =
         </div>
 
         <div className="flex items-center gap-4">
+          <Button onClick={() => setManualBookingOpen(true)} className="gap-2">
+            <Plus className="w-4 h-4" />
+            Dodaj termin
+          </Button>
           {employees.length > 0 && (
             <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
               <SelectTrigger className="w-[180px]">
@@ -444,8 +496,8 @@ const BookingsCalendar = ({ businessId, businessName }: BookingsCalendarProps) =
                           flex items-center gap-1 hover:opacity-90 transition-opacity
                           ${draggedBooking?.id === booking.id ? "opacity-50" : ""}
                         `}
-                        style={{ backgroundColor: getEmployeeColor(booking.employee_id) }}
-                        title={`${booking.booking_time} - ${booking.service_name || "Usluga"} (povucite za premještanje)`}
+                        style={{ backgroundColor: getStatusColor(booking.status) }}
+                        title={`${booking.booking_time} - ${booking.service_name || "Usluga"} - ${STATUS_LABELS[booking.status]} (povucite za premještanje)`}
                       >
                         <GripVertical className="w-3 h-3 flex-shrink-0" />
                         <span className="truncate">{booking.booking_time.slice(0, 5)}</span>
@@ -577,6 +629,16 @@ const BookingsCalendar = ({ businessId, businessName }: BookingsCalendarProps) =
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Manual Booking Dialog */}
+      <ManualBookingDialog
+        open={manualBookingOpen}
+        onOpenChange={setManualBookingOpen}
+        businessId={businessId}
+        businessName={businessName || ""}
+        workingHours={workingHours}
+        onSuccess={loadData}
+      />
     </div>
   );
 };

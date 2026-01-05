@@ -149,7 +149,7 @@ const BusinessDashboard = () => {
         </TabsList>
         
         <TabsContent value="calendar" className="mt-6">
-          <BookingsCalendar businessId={business.id} businessName={business.name} />
+          <BookingsCalendar businessId={business.id} businessName={business.name} workingHours={business.working_hours} />
         </TabsContent>
         
         <TabsContent value="archive" className="mt-6">

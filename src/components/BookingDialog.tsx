@@ -154,7 +154,16 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Niste prijavljeni");
 
-      const { error } = await supabase.from("bookings").insert([
+      // Get client profile
+      const { data: clientProfile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", user.id)
+        .single();
+
+      const clientName = clientProfile?.full_name || user.email || "Korisnik";
+
+      const { data: newBooking, error } = await supabase.from("bookings").insert([
         {
           business_id: business.id,
           service_id: selectedService,
@@ -165,19 +174,20 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
           notes: notes,
           status: "pending",
         },
-      ]);
+      ]).select().single();
 
       if (error) throw error;
 
-      // Send confirmation email
+      const service = services.find(s => s.id === selectedService);
+
+      // Send confirmation email to client
       try {
-        const service = services.find(s => s.id === selectedService);
         await supabase.functions.invoke("send-booking-email", {
           body: {
             type: "confirmation",
-            bookingId: "new",
+            bookingId: newBooking.id,
             clientEmail: user.email,
-            clientName: user.email,
+            clientName: clientName,
             businessName: business.name,
             serviceName: service?.name || "",
             bookingDate: format(selectedDate, "dd.MM.yyyy"),
@@ -186,7 +196,40 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
         });
       } catch (emailError) {
         console.error("Email sending failed:", emailError);
-        // Don't throw - booking is already created
+      }
+
+      // Create in-app notification for provider about new booking
+      try {
+        const { data: businessData } = await supabase
+          .from("businesses")
+          .select("owner_id")
+          .eq("id", business.id)
+          .single();
+
+        if (businessData) {
+          await supabase.from("notifications").insert({
+            user_id: businessData.owner_id,
+            title: "Nova rezervacija",
+            message: `${clientName} je rezervirao/la ${service?.name || "uslugu"} za ${format(selectedDate, "d. MMMM yyyy", { locale: hr })} u ${selectedTime}`,
+            type: "new_booking",
+            related_booking_id: newBooking.id,
+          });
+        }
+      } catch (notifError) {
+        console.error("Failed to create notification:", notifError);
+      }
+
+      // Create in-app notification for client
+      try {
+        await supabase.from("notifications").insert({
+          user_id: user.id,
+          title: "Rezervacija kreirana",
+          message: `Vaša rezervacija za ${service?.name} kod ${business.name} dana ${format(selectedDate, "d. MMMM yyyy", { locale: hr })} u ${selectedTime} je uspješno kreirana i čeka potvrdu.`,
+          type: "confirmation",
+          related_booking_id: newBooking.id,
+        });
+      } catch (notifError) {
+        console.error("Failed to create client notification:", notifError);
       }
 
       toast.success("Rezervacija je uspješno kreirana!");
