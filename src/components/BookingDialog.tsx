@@ -89,7 +89,13 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
         .eq("is_active", true);
 
       if (error) throw error;
-      setEmployees(data || []);
+      const employeeList = data || [];
+      setEmployees(employeeList);
+      
+      // Auto-select if there's only one employee
+      if (employeeList.length === 1) {
+        setSelectedEmployee(employeeList[0].id);
+      }
     } catch (error: any) {
       console.error("Error loading employees:", error);
     }
@@ -97,6 +103,9 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
 
   const loadBookedSlots = async () => {
     if (!selectedDate) return;
+    
+    // If there are employees, require one to be selected before loading slots
+    if (employees.length > 0 && !selectedEmployee) return;
 
     try {
       let query = supabase
@@ -106,11 +115,10 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
         .eq("booking_date", format(selectedDate, "yyyy-MM-dd"))
         .in("status", ["pending", "confirmed"]);
 
-      // If a specific employee is selected, only check their bookings
-      if (selectedEmployee && selectedEmployee !== "any") {
+      // Filter by selected employee
+      if (selectedEmployee) {
         query = query.eq("employee_id", selectedEmployee);
       }
-
       const { data, error } = await query;
 
       if (error) throw error;
@@ -142,6 +150,12 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Require employee selection if there are multiple employees
+    if (employees.length > 1 && !selectedEmployee) {
+      toast.error("Molimo odaberite zaposlenika");
+      return;
+    }
     
     if (!selectedService || !selectedDate || !selectedTime) {
       toast.error("Molimo ispunite sva obavezna polja");
@@ -345,13 +359,12 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
 
           {employees.length > 0 && (
             <div className="space-y-2">
-              <Label>Odaberite zaposlenika (opcionalno)</Label>
+              <Label>Odaberite zaposlenika {employees.length > 1 ? "*" : ""}</Label>
               <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Bilo koji zaposlenik" />
+                  <SelectValue placeholder="Odaberite zaposlenika" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="any">Bilo koji zaposlenik</SelectItem>
                   {employees.map((employee) => (
                     <SelectItem key={employee.id} value={employee.id}>
                       <div className="flex items-center gap-2">
