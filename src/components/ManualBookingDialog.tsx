@@ -242,10 +242,20 @@ const ManualBookingDialog = ({
     const serviceDuration = selectedServiceData.duration_minutes;
     const slotsNeeded = Math.ceil(serviceDuration / 30);
 
+    // Check if selected date is today
+    const now = new Date();
+    const isToday = selectedDate.toDateString() === now.toDateString();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
     return timeSlots.filter((slot) => {
       const [hours, minutes] = slot.split(':').map(Number);
       const slotStartMinutes = hours * 60 + minutes;
       const slotEndMinutes = slotStartMinutes + serviceDuration;
+
+      // If today, filter out past time slots
+      if (isToday && slotStartMinutes <= currentMinutes) {
+        return false;
+      }
 
       if (slotStartMinutes < startMinutes || slotEndMinutes > endMinutes) {
         return false;
@@ -357,7 +367,11 @@ const ManualBookingDialog = ({
               mode="single"
               selected={selectedDate}
               onSelect={setSelectedDate}
-              disabled={(date) => date < new Date()}
+              disabled={(date) => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                return date < today;
+              }}
               className={cn("rounded-md border pointer-events-auto")}
               locale={hr}
             />
