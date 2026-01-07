@@ -56,14 +56,43 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
     if (open) {
       loadServices();
       loadEmployees();
+      setBookedSlots([]);
     }
   }, [open, business.id]);
 
   useEffect(() => {
-    if (selectedDate) {
+    if (selectedDate && (employees.length === 0 || selectedEmployee)) {
       loadBookedSlots();
     }
-  }, [selectedDate, business.id, selectedEmployee]);
+  }, [selectedDate, business.id, selectedEmployee, employees.length]);
+
+  // Real-time subscription for bookings
+  useEffect(() => {
+    if (!open || !selectedDate) return;
+
+    const channel = supabase
+      .channel('booking-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings',
+          filter: `business_id=eq.${business.id}`
+        },
+        () => {
+          // Reload booked slots when any booking changes
+          if (selectedDate && (employees.length === 0 || selectedEmployee)) {
+            loadBookedSlots();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [open, selectedDate, business.id, selectedEmployee, employees.length]);
 
   const loadServices = async () => {
     try {

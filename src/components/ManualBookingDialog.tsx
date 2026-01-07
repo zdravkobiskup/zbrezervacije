@@ -65,14 +65,43 @@ const ManualBookingDialog = ({
     if (open) {
       loadServices();
       loadEmployees();
+      setBookedSlots([]);
     }
   }, [open, businessId]);
 
   useEffect(() => {
-    if (selectedDate) {
+    if (selectedDate && (employees.length === 0 || selectedEmployee)) {
       loadBookedSlots();
     }
-  }, [selectedDate, businessId, selectedEmployee]);
+  }, [selectedDate, businessId, selectedEmployee, employees.length]);
+
+  // Real-time subscription for bookings
+  useEffect(() => {
+    if (!open || !selectedDate) return;
+
+    const channel = supabase
+      .channel('manual-booking-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings',
+          filter: `business_id=eq.${businessId}`
+        },
+        () => {
+          // Reload booked slots when any booking changes
+          if (selectedDate && (employees.length === 0 || selectedEmployee)) {
+            loadBookedSlots();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [open, selectedDate, businessId, selectedEmployee, employees.length]);
 
   const loadServices = async () => {
     try {
