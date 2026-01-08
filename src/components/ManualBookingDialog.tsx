@@ -135,6 +135,9 @@ const ManualBookingDialog = ({
 
   const loadBookedSlots = async () => {
     if (!selectedDate) return;
+    
+    // If there are employees, require one to be selected before loading slots
+    if (employees.length > 0 && (!selectedEmployee || selectedEmployee === "any")) return;
 
     try {
       let query = supabase
@@ -144,6 +147,7 @@ const ManualBookingDialog = ({
         .eq("booking_date", format(selectedDate, "yyyy-MM-dd"))
         .in("status", ["pending", "confirmed"]);
 
+      // Always filter by selected employee when employees exist
       if (selectedEmployee && selectedEmployee !== "any") {
         query = query.eq("employee_id", selectedEmployee);
       }
@@ -178,6 +182,12 @@ const ManualBookingDialog = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Require employee selection if there are employees
+    if (employees.length > 0 && (!selectedEmployee || selectedEmployee === "any")) {
+      toast.error("Molimo odaberite zaposlenika");
+      return;
+    }
     
     if (!selectedService || !selectedDate || !selectedTime || !clientName.trim()) {
       toast.error("Molimo unesite ime klijenta, uslugu, datum i vrijeme");
@@ -367,13 +377,12 @@ const ManualBookingDialog = ({
 
           {employees.length > 0 && (
             <div className="space-y-2">
-              <Label>Odaberite zaposlenika</Label>
+              <Label>Odaberite zaposlenika *</Label>
               <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Bilo koji zaposlenik" />
+                  <SelectValue placeholder="Odaberite zaposlenika" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="any">Bilo koji zaposlenik</SelectItem>
                   {employees.map((employee) => (
                     <SelectItem key={employee.id} value={employee.id}>
                       <div className="flex items-center gap-2">

@@ -2,3 +2,6 @@ project_id = "nyiwsxcnuarardhwzkrt"
 
 [functions.send-reminders]
 verify_jwt = false
+
+[functions.send-weekly-schedule]
+verify_jwt = false
