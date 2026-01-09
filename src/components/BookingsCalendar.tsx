@@ -145,11 +145,15 @@ const BookingsCalendar = ({ businessId, businessName, workingHours }: BookingsCa
   };
 
   const handleStatusChange = async (booking: Booking, newStatus: string) => {
+    console.log("handleStatusChange called:", { bookingId: booking.id, newStatus });
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("bookings")
         .update({ status: newStatus })
-        .eq("id", booking.id);
+        .eq("id", booking.id)
+        .select();
+
+      console.log("Update result:", { data, error });
 
       if (error) throw error;
 
