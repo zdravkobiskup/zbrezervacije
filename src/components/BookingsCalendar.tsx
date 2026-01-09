@@ -86,7 +86,8 @@ const BookingsCalendar = ({ businessId, businessName, workingHours }: BookingsCa
           status,
           employee_id,
           service_id,
-          client_id
+          client_id,
+          notes
         `)
         .eq("business_id", businessId)
         .gte("booking_date", format(monthStart, "yyyy-MM-dd"))
@@ -121,6 +122,24 @@ const BookingsCalendar = ({ businessId, businessName, workingHours }: BookingsCa
 
       const processedBookings: Booking[] = (bookingsData || []).map(booking => {
         const profile = profilesMap.get(booking.client_id);
+        
+        // Check if this is a manual booking by parsing the notes field
+        let clientName = profile?.full_name || null;
+        let clientEmail = profile?.email || null;
+        
+        if (booking.notes?.startsWith("[RUČNA REZERVACIJA]")) {
+          // Parse client name from notes: "[RUČNA REZERVACIJA] Klijent: Ime Prezime, Tel: ..."
+          const match = booking.notes.match(/Klijent:\s*([^,\n]+)/);
+          if (match && match[1]) {
+            clientName = match[1].trim();
+          }
+          // Parse email if present
+          const emailMatch = booking.notes.match(/Email:\s*([^,\n]+)/);
+          if (emailMatch && emailMatch[1]) {
+            clientEmail = emailMatch[1].trim();
+          }
+        }
+        
         return {
           id: booking.id,
           booking_date: booking.booking_date,
@@ -128,8 +147,8 @@ const BookingsCalendar = ({ businessId, businessName, workingHours }: BookingsCa
           status: booking.status || "pending",
           employee_id: booking.employee_id,
           service_name: servicesMap.get(booking.service_id) || null,
-          client_name: profile?.full_name || null,
-          client_email: profile?.email || null,
+          client_name: clientName,
+          client_email: clientEmail,
           client_id: booking.client_id
         };
       });
@@ -145,15 +164,11 @@ const BookingsCalendar = ({ businessId, businessName, workingHours }: BookingsCa
   };
 
   const handleStatusChange = async (booking: Booking, newStatus: string) => {
-    console.log("handleStatusChange called:", { bookingId: booking.id, newStatus });
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("bookings")
         .update({ status: newStatus })
-        .eq("id", booking.id)
-        .select();
-
-      console.log("Update result:", { data, error });
+        .eq("id", booking.id);
 
       if (error) throw error;
 
