@@ -573,8 +573,12 @@ const BookingsCalendar = ({ businessId, businessName, workingHours }: BookingsCa
                         <p className="text-sm truncate">{booking.service_name || "Usluga"}</p>
                         <p className="text-sm text-muted-foreground truncate">
                           {booking.client_name || booking.client_email || "Klijent"}
-                          {employee && ` • ${employee.name}`}
                         </p>
+                        {employee && (
+                          <p className="text-xs text-muted-foreground truncate">
+                            Djelatnik: {employee.name}
+                          </p>
+                        )}
                       </div>
                       {canModify && (
                         <DropdownMenu>
