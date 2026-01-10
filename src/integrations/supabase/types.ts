@@ -391,6 +391,20 @@ export type Database = {
           working_hours: Json
         }[]
       }
+      get_public_businesses: {
+        Args: never
+        Returns: {
+          address: string
+          category: string
+          created_at: string
+          description: string
+          id: string
+          image_url: string
+          is_active: boolean
+          name: string
+          working_hours: Json
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

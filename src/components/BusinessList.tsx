@@ -6,19 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { MapPin, Phone, Mail, Calendar, Heart, Search } from "lucide-react";
+import { MapPin, Calendar, Heart, Search } from "lucide-react";
 import BookingDialog from "./BookingDialog";
 
 interface Business {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   category: string;
-  address: string;
-  phone: string;
-  email: string;
-  image_url: string;
+  address: string | null;
+  image_url: string | null;
   working_hours?: any;
+  is_active: boolean;
+  created_at: string;
 }
 
 const BusinessList = () => {
@@ -59,11 +59,8 @@ const BusinessList = () => {
 
   const loadBusinesses = async () => {
     try {
-      const { data, error } = await supabase
-        .from("businesses")
-        .select("*")
-        .eq("is_active", true)
-        .order("created_at", { ascending: false });
+      // Use secure function that excludes sensitive contact info (email, phone)
+      const { data, error } = await supabase.rpc('get_public_businesses');
 
       if (error) throw error;
       setBusinesses(data || []);
@@ -248,18 +245,13 @@ const BusinessList = () => {
                     <span className="line-clamp-2">{business.address}</span>
                   </div>
                 )}
-                {business.phone && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Phone className="w-4 h-4" />
-                    <span>{business.phone}</span>
-                  </div>
-                )}
-                {business.email && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Mail className="w-4 h-4" />
-                    <span className="truncate">{business.email}</span>
-                  </div>
-                )}
+                <Button
+                  className="w-full mt-4 gap-2"
+                  onClick={() => openBookingDialog(business)}
+                >
+                  <Calendar className="w-4 h-4" />
+                  Rezerviraj termin
+                </Button>
                 <Button
                   className="w-full mt-4 gap-2"
                   onClick={() => openBookingDialog(business)}
