@@ -25,7 +25,8 @@ import {
   Cell,
   Legend
 } from "recharts";
-import { Calendar, CheckCircle, XCircle, Clock, Users, TrendingUp } from "lucide-react";
+import { Calendar, CheckCircle, XCircle, Clock, Users, TrendingUp, Search, UserPlus } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -58,6 +59,7 @@ interface ClientBooking {
   booking_date: string;
   booking_time: string;
   status: string;
+  is_manual: boolean;
 }
 
 const COLORS = {
@@ -92,6 +94,8 @@ const BookingsReport = ({ businessId }: BookingsReportProps) => {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<string>("month");
   const [selectedMonth, setSelectedMonth] = useState<string>(format(new Date(), "yyyy-MM"));
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
 
   useEffect(() => {
     loadReport();
@@ -125,6 +129,15 @@ const BookingsReport = ({ businessId }: BookingsReportProps) => {
       setLoading(true);
       const { start, end } = getDateRange();
 
+      // Get the business owner_id to detect manual bookings
+      const { data: businessData } = await supabase
+        .from("businesses")
+        .select("owner_id")
+        .eq("id", businessId)
+        .single();
+
+      const ownerId = businessData?.owner_id;
+
       const { data, error } = await supabase
         .from("bookings")
         .select(`
@@ -133,6 +146,7 @@ const BookingsReport = ({ businessId }: BookingsReportProps) => {
           booking_time,
           status,
           client_id,
+          notes,
           services (name)
         `)
         .eq("business_id", businessId)
@@ -172,14 +186,26 @@ const BookingsReport = ({ businessId }: BookingsReportProps) => {
           }
 
           const profile = profilesMap.get(booking.client_id);
+          const isManual = booking.client_id === ownerId;
+          
+          // For manual bookings, try to get name from notes
+          let clientName = profile?.full_name || "Nepoznato";
+          if (isManual && booking.notes) {
+            const nameMatch = booking.notes.match(/Klijent:\s*([^,\n]+)/);
+            if (nameMatch) {
+              clientName = nameMatch[1].trim();
+            }
+          }
+
           bookingsWithClients.push({
             id: booking.id,
-            client_name: profile?.full_name || "Nepoznato",
+            client_name: clientName,
             client_email: profile?.email || "",
             service_name: (booking.services as any)?.name || "",
             booking_date: booking.booking_date,
             booking_time: booking.booking_time,
             status: booking.status,
+            is_manual: isManual,
           });
         });
 
@@ -234,6 +260,17 @@ const BookingsReport = ({ businessId }: BookingsReportProps) => {
   const completionRate = stats.total > 0 
     ? Math.round((stats.completed / stats.total) * 100) 
     : 0;
+
+  // Filter client bookings based on search term and status filter
+  const filteredBookings = clientBookings.filter((booking) => {
+    const matchesSearch = searchTerm === "" || 
+      booking.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      booking.client_email.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesStatus = statusFilter === "all" || booking.status === statusFilter;
+    
+    return matchesSearch && matchesStatus;
+  });
 
   if (loading) {
     return <div className="text-center py-8">Učitavanje izvještaja...</div>;
@@ -372,10 +409,39 @@ const BookingsReport = ({ businessId }: BookingsReportProps) => {
             Popis klijenata i rezervacija
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          {clientBookings.length === 0 ? (
+        <CardContent className="space-y-4">
+          {/* Search and Status Filter */}
+          <div className="flex flex-wrap gap-4 items-center">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Pretraži po imenu klijenta..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filtriraj po statusu" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Svi statusi</SelectItem>
+                <SelectItem value="completed">Završeno (došao/la)</SelectItem>
+                <SelectItem value="no_show">Nije došao/la</SelectItem>
+                <SelectItem value="confirmed">Potvrđeno</SelectItem>
+                <SelectItem value="pending">Na čekanju</SelectItem>
+                <SelectItem value="cancelled">Otkazano</SelectItem>
+                <SelectItem value="rescheduled">Promijenjen termin</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {filteredBookings.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
-              Nema rezervacija u odabranom razdoblju
+              {clientBookings.length === 0 
+                ? "Nema rezervacija u odabranom razdoblju"
+                : "Nema rezultata za odabrane filtere"}
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -390,12 +456,24 @@ const BookingsReport = ({ businessId }: BookingsReportProps) => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {clientBookings.map((booking) => (
+                  {filteredBookings.map((booking) => (
                     <TableRow key={booking.id}>
                       <TableCell>
-                        <div>
-                          <p className="font-medium">{booking.client_name}</p>
-                          <p className="text-sm text-muted-foreground">{booking.client_email}</p>
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium">{booking.client_name}</p>
+                              {booking.is_manual && (
+                                <Badge variant="secondary" className="text-xs flex items-center gap-1">
+                                  <UserPlus className="w-3 h-3" />
+                                  Ručno
+                                </Badge>
+                              )}
+                            </div>
+                            {booking.client_email && !booking.is_manual && (
+                              <p className="text-sm text-muted-foreground">{booking.client_email}</p>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>{booking.service_name}</TableCell>
