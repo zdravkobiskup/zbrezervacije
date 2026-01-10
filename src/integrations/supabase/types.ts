@@ -70,6 +70,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "bookings_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bookings_service_id_fkey"
             columns: ["service_id"]
             isOneToOne: false
@@ -377,7 +384,48 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      employees_public: {
+        Row: {
+          business_id: string | null
+          color: string | null
+          group_id: string | null
+          id: string | null
+          is_active: boolean | null
+          name: string | null
+        }
+        Insert: {
+          business_id?: string | null
+          color?: string | null
+          group_id?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+        }
+        Update: {
+          business_id?: string | null
+          color?: string | null
+          group_id?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employees_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "employee_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       has_role: {
