@@ -76,26 +76,28 @@ const RescheduleDialog = ({ open, onOpenChange, booking, onSuccess }: Reschedule
     if (!selectedDate || !booking?.business_id) return;
 
     try {
-      let query = supabase
-        .from("bookings")
-        .select("booking_time, services(duration_minutes)")
-        .eq("business_id", booking.business_id)
-        .eq("booking_date", format(selectedDate, "yyyy-MM-dd"))
-        .in("status", ["pending", "confirmed"])
-        .neq("id", booking.id); // Exclude current booking
-
-      if (booking.employee_id) {
-        query = query.eq("employee_id", booking.employee_id);
-      }
-
-      const { data, error } = await query;
+      // Use secure function that only returns availability data (not full booking details)
+      const { data, error } = await supabase.rpc("get_booking_availability", {
+        p_business_id: booking.business_id,
+        p_start_date: format(selectedDate, "yyyy-MM-dd"),
+        p_end_date: format(selectedDate, "yyyy-MM-dd"),
+      });
 
       if (error) throw error;
 
+      // Filter by employee and exclude current booking time slot on client side
+      const currentBookingTime = booking.booking_time;
+      const filteredData = data?.filter((b: any) => {
+        if (booking.employee_id && b.employee_id !== booking.employee_id) return false;
+        // Exclude current booking's time slot (since we're rescheduling it)
+        if (b.booking_time === currentBookingTime) return false;
+        return true;
+      });
+
       const occupied: string[] = [];
-      data?.forEach((b: any) => {
+      filteredData?.forEach((b: any) => {
         const startTime = b.booking_time;
-        const duration = b.services?.duration_minutes || 30;
+        const duration = b.duration_minutes || 30;
         const slots = Math.ceil(duration / 30);
 
         const [hours, minutes] = startTime.split(':').map(Number);
