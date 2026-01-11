@@ -140,26 +140,24 @@ const ManualBookingDialog = ({
     if (employees.length > 0 && (!selectedEmployee || selectedEmployee === "any")) return;
 
     try {
-      let query = supabase
-        .from("bookings")
-        .select("booking_time, services(duration_minutes)")
-        .eq("business_id", businessId)
-        .eq("booking_date", format(selectedDate, "yyyy-MM-dd"))
-        .in("status", ["pending", "confirmed"]);
-
-      // Always filter by selected employee when employees exist
-      if (selectedEmployee && selectedEmployee !== "any") {
-        query = query.eq("employee_id", selectedEmployee);
-      }
-
-      const { data, error } = await query;
+      // Use secure function that only returns availability data (not full booking details)
+      const { data, error } = await supabase.rpc("get_booking_availability", {
+        p_business_id: businessId,
+        p_start_date: format(selectedDate, "yyyy-MM-dd"),
+        p_end_date: format(selectedDate, "yyyy-MM-dd"),
+      });
 
       if (error) throw error;
 
+      // Filter by selected employee on client side
+      const filteredData = (selectedEmployee && selectedEmployee !== "any")
+        ? data?.filter((b: any) => b.employee_id === selectedEmployee)
+        : data;
+
       const occupied: string[] = [];
-      data?.forEach((booking: any) => {
+      filteredData?.forEach((booking: any) => {
         const startTime = booking.booking_time;
-        const duration = booking.services?.duration_minutes || 30;
+        const duration = booking.duration_minutes || 30;
         const slots = Math.ceil(duration / 30);
 
         const [hours, minutes] = startTime.split(':').map(Number);

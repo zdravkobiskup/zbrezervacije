@@ -380,6 +380,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_booking_availability: {
+        Args: {
+          p_business_id: string
+          p_end_date: string
+          p_start_date: string
+        }
+        Returns: {
+          booking_date: string
+          booking_time: string
+          duration_minutes: number
+          employee_id: string
+        }[]
+      }
       get_employees_for_booking: {
         Args: { p_business_id: string }
         Returns: {

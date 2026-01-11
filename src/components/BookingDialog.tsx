@@ -137,25 +137,24 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
     if (employees.length > 0 && !selectedEmployee) return;
 
     try {
-      let query = supabase
-        .from("bookings")
-        .select("booking_time, service_id, employee_id, services(duration_minutes)")
-        .eq("business_id", business.id)
-        .eq("booking_date", format(selectedDate, "yyyy-MM-dd"))
-        .in("status", ["pending", "confirmed"]);
-
-      // Filter by selected employee
-      if (selectedEmployee) {
-        query = query.eq("employee_id", selectedEmployee);
-      }
-      const { data, error } = await query;
+      // Use secure function that only returns availability data (not full booking details)
+      const { data, error } = await supabase.rpc("get_booking_availability", {
+        p_business_id: business.id,
+        p_start_date: format(selectedDate, "yyyy-MM-dd"),
+        p_end_date: format(selectedDate, "yyyy-MM-dd"),
+      });
 
       if (error) throw error;
 
+      // Filter by selected employee on client side
+      const filteredData = selectedEmployee
+        ? data?.filter((b: any) => b.employee_id === selectedEmployee)
+        : data;
+
       const occupied: string[] = [];
-      data?.forEach((booking: any) => {
+      filteredData?.forEach((booking: any) => {
         const startTime = booking.booking_time;
-        const duration = booking.services?.duration_minutes || 30;
+        const duration = booking.duration_minutes || 30;
         const slots = Math.ceil(duration / 30);
 
         // Mark all 30-minute slots occupied by this booking
