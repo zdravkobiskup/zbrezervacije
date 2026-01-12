@@ -252,13 +252,6 @@ const BusinessList = () => {
                   <Calendar className="w-4 h-4" />
                   Rezerviraj termin
                 </Button>
-                <Button
-                  className="w-full mt-4 gap-2"
-                  onClick={() => openBookingDialog(business)}
-                >
-                  <Calendar className="w-4 h-4" />
-                  Rezerviraj termin
-                </Button>
               </CardContent>
             </Card>
           ))}
