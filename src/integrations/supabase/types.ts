@@ -63,13 +63,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "bookings_business_id_fkey"
-            columns: ["business_id"]
-            isOneToOne: false
-            referencedRelation: "public_businesses_view"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "bookings_employee_id_fkey"
             columns: ["employee_id"]
             isOneToOne: false
@@ -166,13 +159,6 @@ export type Database = {
             referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "employee_groups_business_id_fkey"
-            columns: ["business_id"]
-            isOneToOne: false
-            referencedRelation: "public_businesses_view"
-            referencedColumns: ["id"]
-          },
         ]
       }
       employees: {
@@ -221,13 +207,6 @@ export type Database = {
             columns: ["business_id"]
             isOneToOne: false
             referencedRelation: "businesses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "employees_business_id_fkey"
-            columns: ["business_id"]
-            isOneToOne: false
-            referencedRelation: "public_businesses_view"
             referencedColumns: ["id"]
           },
           {
@@ -406,13 +385,6 @@ export type Database = {
             referencedRelation: "businesses"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "services_business_id_fkey"
-            columns: ["business_id"]
-            isOneToOne: false
-            referencedRelation: "public_businesses_view"
-            referencedColumns: ["id"]
-          },
         ]
       }
       user_roles: {
@@ -438,42 +410,7 @@ export type Database = {
       }
     }
     Views: {
-      public_businesses_view: {
-        Row: {
-          address: string | null
-          category: string | null
-          created_at: string | null
-          description: string | null
-          id: string | null
-          image_url: string | null
-          is_active: boolean | null
-          name: string | null
-          working_hours: Json | null
-        }
-        Insert: {
-          address?: string | null
-          category?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string | null
-          image_url?: string | null
-          is_active?: boolean | null
-          name?: string | null
-          working_hours?: Json | null
-        }
-        Update: {
-          address?: string | null
-          category?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string | null
-          image_url?: string | null
-          is_active?: boolean | null
-          name?: string | null
-          working_hours?: Json | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       get_booking_availability: {
