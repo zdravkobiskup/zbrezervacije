@@ -310,6 +310,39 @@ export type Database = {
         }
         Relationships: []
       }
+      security_audit_log: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          ip_address: string | null
+          record_id: string | null
+          table_name: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          record_id?: string | null
+          table_name: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          record_id?: string | null
+          table_name?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       services: {
         Row: {
           business_id: string
@@ -393,6 +426,13 @@ export type Database = {
           employee_id: string
         }[]
       }
+      get_business_contact: {
+        Args: { p_business_id: string }
+        Returns: {
+          email: string
+          phone: string
+        }[]
+      }
       get_client_profile_for_booking: {
         Args: { p_business_id: string; p_client_id: string }
         Returns: {
@@ -432,6 +472,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      log_security_event: {
+        Args: { p_action: string; p_record_id?: string; p_table_name: string }
+        Returns: undefined
       }
     }
     Enums: {
