@@ -393,6 +393,13 @@ export type Database = {
           employee_id: string
         }[]
       }
+      get_client_profile_for_booking: {
+        Args: { p_business_id: string; p_client_id: string }
+        Returns: {
+          full_name: string
+          id: string
+        }[]
+      }
       get_employees_for_booking: {
         Args: { p_business_id: string }
         Returns: {
@@ -404,6 +411,7 @@ export type Database = {
           working_hours: Json
         }[]
       }
+      get_group_working_hours: { Args: { p_group_id: string }; Returns: Json }
       get_public_businesses: {
         Args: never
         Returns: {
