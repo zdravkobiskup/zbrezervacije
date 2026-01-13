@@ -440,6 +440,13 @@ export type Database = {
           phone: string
         }[]
       }
+      get_business_contact_for_client: {
+        Args: { p_business_id: string }
+        Returns: {
+          email: string
+          phone: string
+        }[]
+      }
       get_client_profile_for_booking: {
         Args: { p_business_id: string; p_client_id: string }
         Returns: {
