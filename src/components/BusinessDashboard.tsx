@@ -11,6 +11,7 @@ import EmployeeManagement from "./EmployeeManagement";
 import EmployeeGroupManagement from "./EmployeeGroupManagement";
 import BookingsReport from "./BookingsReport";
 import BookingsArchive from "./BookingsArchive";
+import InventoryManagement from "./InventoryManagement";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface EmployeeGroup {
