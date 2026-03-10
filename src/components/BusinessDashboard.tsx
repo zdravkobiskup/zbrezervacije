@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Store, Calendar, Settings, Users, BarChart3, Archive } from "lucide-react";
+import { Plus, Store, Calendar, Settings, Users, BarChart3, Archive, Package } from "lucide-react";
 import { toast } from "sonner";
 import BusinessSetup from "./BusinessSetup";
 import ServiceManagement from "./ServiceManagement";
@@ -11,6 +11,7 @@ import EmployeeManagement from "./EmployeeManagement";
 import EmployeeGroupManagement from "./EmployeeGroupManagement";
 import BookingsReport from "./BookingsReport";
 import BookingsArchive from "./BookingsArchive";
+import InventoryManagement from "./InventoryManagement";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface EmployeeGroup {
@@ -121,7 +122,7 @@ const BusinessDashboard = () => {
       </div>
 
       <Tabs defaultValue="calendar" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="calendar" className="gap-2">
             <Calendar className="w-4 h-4 hidden sm:inline" />
             <span className="hidden sm:inline">Kalendar</span>
@@ -140,6 +141,11 @@ const BusinessDashboard = () => {
             <Users className="w-4 h-4 hidden sm:inline" />
             <span className="hidden sm:inline">Zaposlenici</span>
             <span className="sm:hidden">Zap.</span>
+          </TabsTrigger>
+          <TabsTrigger value="inventory" className="gap-2">
+            <Package className="w-4 h-4 hidden sm:inline" />
+            <span className="hidden sm:inline">Skladište</span>
+            <span className="sm:hidden">Skl.</span>
           </TabsTrigger>
           <TabsTrigger value="reports" className="gap-2">
             <BarChart3 className="w-4 h-4 hidden sm:inline" />
@@ -171,6 +177,10 @@ const BusinessDashboard = () => {
               groups={groups}
             />
           </div>
+        </TabsContent>
+
+        <TabsContent value="inventory" className="mt-6">
+          <InventoryManagement businessId={business.id} />
         </TabsContent>
 
         <TabsContent value="reports" className="mt-6">

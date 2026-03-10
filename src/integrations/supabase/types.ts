@@ -260,6 +260,102 @@ export type Database = {
         }
         Relationships: []
       }
+      material_transactions: {
+        Row: {
+          booking_id: string | null
+          created_at: string
+          id: string
+          material_id: string
+          notes: string | null
+          quantity_change: number
+          type: string
+        }
+        Insert: {
+          booking_id?: string | null
+          created_at?: string
+          id?: string
+          material_id: string
+          notes?: string | null
+          quantity_change: number
+          type?: string
+        }
+        Update: {
+          booking_id?: string | null
+          created_at?: string
+          id?: string
+          material_id?: string
+          notes?: string | null
+          quantity_change?: number
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_transactions_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_transactions_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      materials: {
+        Row: {
+          business_id: string
+          created_at: string
+          current_quantity: number
+          id: string
+          min_quantity: number
+          name: string
+          price_per_unit: number
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          current_quantity?: number
+          id?: string
+          min_quantity?: number
+          name: string
+          price_per_unit?: number
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          current_quantity?: number
+          id?: string
+          min_quantity?: number
+          name?: string
+          price_per_unit?: number
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "materials_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "materials_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -363,6 +459,45 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      service_materials: {
+        Row: {
+          created_at: string
+          id: string
+          material_id: string
+          quantity_needed: number
+          service_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          material_id: string
+          quantity_needed?: number
+          service_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          material_id?: string
+          quantity_needed?: number
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_materials_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_materials_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       services: {
         Row: {
