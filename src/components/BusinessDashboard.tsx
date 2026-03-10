@@ -179,6 +179,10 @@ const BusinessDashboard = () => {
           </div>
         </TabsContent>
 
+        <TabsContent value="inventory" className="mt-6">
+          <InventoryManagement businessId={business.id} />
+        </TabsContent>
+
         <TabsContent value="reports" className="mt-6">
           <BookingsReport businessId={business.id} />
         </TabsContent>
