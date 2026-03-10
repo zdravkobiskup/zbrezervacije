@@ -122,7 +122,7 @@ const BusinessDashboard = () => {
       </div>
 
       <Tabs defaultValue="calendar" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="calendar" className="gap-2">
             <Calendar className="w-4 h-4 hidden sm:inline" />
             <span className="hidden sm:inline">Kalendar</span>
@@ -141,6 +141,11 @@ const BusinessDashboard = () => {
             <Users className="w-4 h-4 hidden sm:inline" />
             <span className="hidden sm:inline">Zaposlenici</span>
             <span className="sm:hidden">Zap.</span>
+          </TabsTrigger>
+          <TabsTrigger value="inventory" className="gap-2">
+            <Package className="w-4 h-4 hidden sm:inline" />
+            <span className="hidden sm:inline">Skladište</span>
+            <span className="sm:hidden">Skl.</span>
           </TabsTrigger>
           <TabsTrigger value="reports" className="gap-2">
             <BarChart3 className="w-4 h-4 hidden sm:inline" />
