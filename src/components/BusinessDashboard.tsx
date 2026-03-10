@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Store, Calendar, Settings, Users, BarChart3, Archive } from "lucide-react";
+import { Plus, Store, Calendar, Settings, Users, BarChart3, Archive, Package } from "lucide-react";
 import { toast } from "sonner";
 import BusinessSetup from "./BusinessSetup";
 import ServiceManagement from "./ServiceManagement";
