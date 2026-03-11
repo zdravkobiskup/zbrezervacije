@@ -71,10 +71,9 @@ const Auth = () => {
       if (error) throw error;
 
       if (data.user) {
-        // Insert user role
+        // Assign role via security definer function (bypasses RLS)
         const { error: roleError } = await supabase
-          .from("user_roles")
-          .insert({ user_id: data.user.id, role: userType });
+          .rpc("assign_role_on_signup", { p_user_id: data.user.id, p_role: userType });
 
         if (roleError) throw roleError;
 
