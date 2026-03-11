@@ -611,6 +611,13 @@ export type Database = {
       }
     }
     Functions: {
+      assign_role_on_signup: {
+        Args: {
+          p_role: Database["public"]["Enums"]["app_role"]
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       get_booking_availability: {
         Args: {
           p_business_id: string
