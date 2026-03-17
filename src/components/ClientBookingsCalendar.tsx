@@ -91,11 +91,13 @@ const ClientBookingsCalendar = () => {
 
         const [servicesRes, businessesRes] = await Promise.all([
           supabase.from("services").select("id, name, duration_minutes").in("id", serviceIds),
-          supabase.from("businesses").select("id, name, address").in("id", businessIds)
+          supabase.rpc("get_public_businesses")
         ]);
 
         const servicesMap = new Map(servicesRes.data?.map(s => [s.id, s]));
-        const businessesMap = new Map(businessesRes.data?.map(b => [b.id, b]));
+        const businessesMap = new Map(
+          businessesRes.data?.filter(b => businessIds.includes(b.id)).map(b => [b.id, b])
+        );
 
         const processedBookings: Booking[] = data.map(booking => {
           const service = servicesMap.get(booking.service_id);
