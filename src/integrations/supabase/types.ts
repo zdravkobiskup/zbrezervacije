@@ -652,6 +652,13 @@ export type Database = {
           phone: string
         }[]
       }
+      get_business_working_hours_and_service: {
+        Args: { p_business_id: string; p_service_id: string }
+        Returns: {
+          duration_minutes: number
+          working_hours: Json
+        }[]
+      }
       get_client_profile_for_booking: {
         Args: { p_business_id: string; p_client_id: string }
         Returns: {
