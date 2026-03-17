@@ -56,16 +56,16 @@ const RescheduleDialog = ({ open, onOpenChange, booking, onSuccess }: Reschedule
     if (!booking?.business_id || !booking?.service_id) return;
 
     try {
-      const [businessRes, serviceRes] = await Promise.all([
-        supabase.from("businesses").select("working_hours").eq("id", booking.business_id).single(),
-        supabase.from("services").select("duration_minutes").eq("id", booking.service_id).single()
-      ]);
+      const { data, error } = await supabase.rpc("get_business_working_hours_and_service", {
+        p_business_id: booking.business_id,
+        p_service_id: booking.service_id,
+      });
 
-      if (businessRes.data) {
-        setWorkingHours(businessRes.data.working_hours);
-      }
-      if (serviceRes.data) {
-        setServiceDuration(serviceRes.data.duration_minutes);
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        setWorkingHours(data[0].working_hours);
+        setServiceDuration(data[0].duration_minutes);
       }
     } catch (error) {
       console.error("Error loading business data:", error);
