@@ -56,16 +56,16 @@ const RescheduleDialog = ({ open, onOpenChange, booking, onSuccess }: Reschedule
     if (!booking?.business_id || !booking?.service_id) return;
 
     try {
-      const [businessRes, serviceRes] = await Promise.all([
-        supabase.from("businesses").select("working_hours").eq("id", booking.business_id).single(),
-        supabase.from("services").select("duration_minutes").eq("id", booking.service_id).single()
-      ]);
+      const { data, error } = await supabase.rpc("get_business_working_hours_and_service", {
+        p_business_id: booking.business_id,
+        p_service_id: booking.service_id,
+      });
 
-      if (businessRes.data) {
-        setWorkingHours(businessRes.data.working_hours);
-      }
-      if (serviceRes.data) {
-        setServiceDuration(serviceRes.data.duration_minutes);
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        setWorkingHours(data[0].working_hours);
+        setServiceDuration(data[0].duration_minutes);
       }
     } catch (error) {
       console.error("Error loading business data:", error);
@@ -154,45 +154,37 @@ const RescheduleDialog = ({ open, onOpenChange, booking, onSuccess }: Reschedule
 
       // Send notification email and in-app notification to provider
       try {
-        // Get business owner info
-        const { data: businessData } = await supabase
-          .from("businesses")
-          .select("owner_id")
-          .eq("id", booking.business_id)
-          .single();
+        // Get business owner info using secure function
+        const { data: ownerData } = await supabase.rpc("get_business_owner_for_notification", {
+          p_business_id: booking.business_id,
+        });
 
-        if (businessData) {
-          const { data: ownerProfile } = await supabase
-            .from("profiles")
-            .select("email, full_name")
-            .eq("id", businessData.owner_id)
-            .single();
+        if (ownerData && ownerData.length > 0) {
+          const owner = ownerData[0];
 
-          if (ownerProfile) {
-            // Send email notification
-            await supabase.functions.invoke("send-booking-email", {
-              body: {
-                type: "reschedule_notification",
-                clientEmail: ownerProfile.email,
-                clientName: ownerProfile.full_name || "Pružatelj usluge",
-                businessName: booking.business_name,
-                serviceName: booking.service_name,
-                oldDate: booking.booking_date,
-                oldTime: booking.booking_time,
-                bookingDate: format(selectedDate, "dd.MM.yyyy"),
-                bookingTime: selectedTime,
-              },
-            });
+          // Send email notification
+          await supabase.functions.invoke("send-booking-email", {
+            body: {
+              type: "reschedule_notification",
+              clientEmail: owner.owner_email,
+              clientName: owner.owner_name || "Pružatelj usluge",
+              businessName: booking.business_name,
+              serviceName: booking.service_name,
+              oldDate: booking.booking_date,
+              oldTime: booking.booking_time,
+              bookingDate: format(selectedDate, "dd.MM.yyyy"),
+              bookingTime: selectedTime,
+            },
+          });
 
-            // Create in-app notification for the provider
-            await supabase.from("notifications").insert({
-              user_id: businessData.owner_id,
-              title: "Termin promijenjen",
-              message: `${clientName} je promijenio/la termin za ${booking.service_name} sa ${booking.booking_date} ${booking.booking_time} na ${format(selectedDate, "dd.MM.yyyy")} ${selectedTime}`,
-              type: "reschedule",
-              related_booking_id: booking.id,
-            });
-          }
+          // Create in-app notification for the provider
+          await supabase.from("notifications").insert({
+            user_id: owner.owner_id,
+            title: "Termin promijenjen",
+            message: `${clientName} je promijenio/la termin za ${booking.service_name} sa ${booking.booking_date} ${booking.booking_time} na ${format(selectedDate, "dd.MM.yyyy")} ${selectedTime}`,
+            type: "reschedule",
+            related_booking_id: booking.id,
+          });
         }
       } catch (notificationError) {
         console.error("Notification sending failed:", notificationError);
