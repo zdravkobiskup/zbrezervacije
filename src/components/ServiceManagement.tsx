@@ -130,6 +130,9 @@ const ServiceManagement = ({ businessId }: ServiceManagementProps) => {
       description: "",
       duration_minutes: 30,
       price: 0,
+      base_price: "",
+      sale_price: "",
+      lowest_price_30d: "",
     });
     setEditingService(null);
   };
