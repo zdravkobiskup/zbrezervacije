@@ -8,6 +8,13 @@
       "when": 1793027393448,
       "tag": "0000_service_price_rules",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793028025897,
+      "tag": "0001_allow_contact_in_manual_booking_notes",
+      "breakpoints": true
     }
   ]
 }
