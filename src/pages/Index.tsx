@@ -44,9 +44,11 @@ const Index = () => {
         <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/60 to-background" />
         
         <div className="relative z-10 container mx-auto px-4 text-center space-y-8">
-          <h1 className="text-5xl md:text-7xl font-bold bg-clip-text text-transparent bg-gradient-hero animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            BookEasy
-          </h1>
+          <img
+            src={logo}
+            alt="ZB rezervacije"
+            className="w-64 md:w-80 mx-auto animate-in fade-in slide-in-from-bottom-4 duration-1000 drop-shadow-lg"
+          />
           
           <p className="text-xl md:text-2xl text-foreground/90 max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-150">
             Jednostavno rezervirajte termine kod vaših omiljenih pružatelja usluga
