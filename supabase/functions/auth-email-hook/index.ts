@@ -15,7 +15,7 @@ const corsHeaders = {
 }
 
 // Configuration
-const SITE_NAME = "Salon Spot"
+const SITE_NAME = "ZB rezervacije"
 const SENDER_DOMAIN = "notify.zbrezervacije.info"
 const ROOT_DOMAIN = "zbrezervacije.info"
 const FROM_DOMAIN = "zbrezervacije.info"
