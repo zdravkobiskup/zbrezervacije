@@ -1,3 +1,4 @@
+import ServicePrices from "./ServicePrices";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -17,6 +18,9 @@ interface Service {
   description: string;
   duration_minutes: number;
   price: number;
+  base_price?: number | null;
+  sale_price?: number | null;
+  lowest_price_30d?: number | null;
 }
 
 interface Employee {
@@ -373,7 +377,7 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
                     <div className="flex justify-between items-center w-full">
                       <span>{service.name}</span>
                       <span className="text-sm text-muted-foreground ml-4">
-                        {service.duration_minutes}min - €{service.price.toFixed(2)}
+                        {service.duration_minutes}min - €{(service.sale_price ?? service.price).toFixed(2)}{service.sale_price != null ? " (akcija)" : ""}
                       </span>
                     </div>
                   </SelectItem>
@@ -382,6 +386,9 @@ const BookingDialog = ({ open, onOpenChange, business }: BookingDialogProps) => 
             </Select>
             {selectedServiceData?.description && (
               <p className="text-sm text-muted-foreground">{selectedServiceData.description}</p>
+            )}
+            {selectedServiceData && (
+              <div className="rounded-lg border p-3"><ServicePrices {...selectedServiceData} /></div>
             )}
           </div>
 
