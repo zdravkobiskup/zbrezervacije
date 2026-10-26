@@ -81,7 +81,7 @@ const Dashboard = () => {
       <header className="border-b bg-card shadow-soft">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-primary">BookEasy</h1>
+            <h1 className="text-2xl font-bold text-primary">ZB rezervacije</h1>
             {userRole === "admin" && (
               <span className="px-2 py-1 text-xs font-medium bg-destructive text-destructive-foreground rounded">
                 Admin
