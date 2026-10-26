@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { HeroButton } from "@/components/ui/hero-button";
 import { Calendar, Users, Clock, Star } from "lucide-react";
 import heroBg from "@/assets/hero-bg.jpg";
+import logo from "@/assets/logo.png";
 
 const Index = () => {
   const navigate = useNavigate();
