@@ -17,17 +17,17 @@ interface ReauthenticationEmailProps {
 }
 
 export const ReauthenticationEmail = ({ token }: ReauthenticationEmailProps) => (
-  <Html lang="en" dir="ltr">
+  <Html lang="hr" dir="ltr">
     <Head />
-    <Preview>Your verification code</Preview>
+    <Preview>Vaš kod za potvrdu</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Confirm reauthentication</Heading>
-        <Text style={text}>Use the code below to confirm your identity:</Text>
+        <Heading style={h1}>Potvrdite identitet</Heading>
+        <Text style={text}>Upotrijebite kod u nastavku kako biste potvrdili svoj identitet:</Text>
         <Text style={codeStyle}>{token}</Text>
         <Text style={footer}>
-          This code will expire shortly. If you didn't request this, you can
-          safely ignore this email.
+          Ovaj kod uskoro istječe. Ako niste zatražili ovaj kod, slobodno
+          zanemarite ovu poruku.
         </Text>
       </Container>
     </Body>
@@ -41,7 +41,7 @@ const container = { padding: '20px 25px' }
 const h1 = {
   fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: '#000000',
+  color: 'hsl(220, 15%, 15%)',
   margin: '0 0 20px',
 }
 const text = {
@@ -54,7 +54,7 @@ const codeStyle = {
   fontFamily: 'Courier, monospace',
   fontSize: '22px',
   fontWeight: 'bold' as const,
-  color: '#000000',
+  color: 'hsl(220, 15%, 15%)',
   margin: '0 0 30px',
 }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
