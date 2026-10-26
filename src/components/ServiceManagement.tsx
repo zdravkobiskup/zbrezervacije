@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Clock, Euro } from "lucide-react";
+import ServicePrices from "./ServicePrices";
 import { Badge } from "@/components/ui/badge";
 
 interface Service {
@@ -16,6 +17,9 @@ interface Service {
   description: string;
   duration_minutes: number;
   price: number;
+  base_price: number | null;
+  sale_price: number | null;
+  lowest_price_30d: number | null;
   is_active: boolean;
 }
 
@@ -33,6 +37,9 @@ const ServiceManagement = ({ businessId }: ServiceManagementProps) => {
     description: "",
     duration_minutes: 30,
     price: 0,
+    base_price: "" as string,
+    sale_price: "" as string,
+    lowest_price_30d: "" as string,
   });
 
   useEffect(() => {
@@ -58,13 +65,25 @@ const ServiceManagement = ({ businessId }: ServiceManagementProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const num = (v: string) => (v === "" ? null : parseFloat(v));
+    const sale = num(formData.sale_price);
+    if (sale !== null && formData.lowest_price_30d === "") {
+      toast.error("Uz akcijsku cijenu unesite najnižu cijenu u zadnjih 30 dana");
+      return;
+    }
+    const payload = {
+      ...formData,
+      base_price: num(formData.base_price),
+      sale_price: sale,
+      lowest_price_30d: sale === null ? null : num(formData.lowest_price_30d),
+    };
     setLoading(true);
 
     try {
       if (editingService) {
         const { error } = await supabase
           .from("services")
-          .update(formData)
+          .update(payload)
           .eq("id", editingService.id);
 
         if (error) throw error;
@@ -72,7 +91,7 @@ const ServiceManagement = ({ businessId }: ServiceManagementProps) => {
       } else {
         const { error } = await supabase
           .from("services")
-          .insert([{ ...formData, business_id: businessId }]);
+          .insert([{ ...payload, business_id: businessId }]);
 
         if (error) throw error;
         toast.success("Usluga je dodana!");
@@ -111,6 +130,9 @@ const ServiceManagement = ({ businessId }: ServiceManagementProps) => {
       description: "",
       duration_minutes: 30,
       price: 0,
+      base_price: "",
+      sale_price: "",
+      lowest_price_30d: "",
     });
     setEditingService(null);
   };
@@ -122,6 +144,9 @@ const ServiceManagement = ({ businessId }: ServiceManagementProps) => {
       description: service.description || "",
       duration_minutes: service.duration_minutes,
       price: service.price,
+      base_price: service.base_price?.toString() ?? "",
+      sale_price: service.sale_price?.toString() ?? "",
+      lowest_price_30d: service.lowest_price_30d?.toString() ?? "",
     });
     setDialogOpen(true);
   };
@@ -187,7 +212,7 @@ const ServiceManagement = ({ businessId }: ServiceManagementProps) => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="price">Cijena (€) *</Label>
+                  <Label htmlFor="price">Trenutna cijena (€) *</Label>
                   <Input
                     id="price"
                     type="number"
@@ -199,6 +224,27 @@ const ServiceManagement = ({ businessId }: ServiceManagementProps) => {
                   />
                 </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="base_price">Bazna cijena na 10.09.2026. (€)</Label>
+                  <Input id="base_price" type="number" min="0" step="0.01" value={formData.base_price}
+                    onChange={(e) => setFormData({ ...formData, base_price: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sale_price">Akcijska cijena (€)</Label>
+                  <Input id="sale_price" type="number" min="0" step="0.01" value={formData.sale_price}
+                    placeholder="Nema akcije"
+                    onChange={(e) => setFormData({ ...formData, sale_price: e.target.value })} />
+                </div>
+              </div>
+              {formData.sale_price !== "" && (
+                <div className="space-y-2">
+                  <Label htmlFor="lowest">Najniža cijena u zadnjih 30 dana (€) *</Label>
+                  <Input id="lowest" type="number" min="0" step="0.01" value={formData.lowest_price_30d}
+                    onChange={(e) => setFormData({ ...formData, lowest_price_30d: e.target.value })} required />
+                </div>
+              )}
 
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Spremanje..." : editingService ? "Ažuriraj" : "Dodaj"}
@@ -239,10 +285,7 @@ const ServiceManagement = ({ businessId }: ServiceManagementProps) => {
                     <Clock className="w-4 h-4" />
                     <span>{service.duration_minutes} min</span>
                   </div>
-                  <div className="flex items-center gap-2 text-lg font-semibold text-primary">
-                    <Euro className="w-5 h-5" />
-                    <span>{service.price.toFixed(2)}</span>
-                  </div>
+                  <ServicePrices {...service} />
                 </div>
                 <div className="flex gap-2 mt-4">
                   <Button

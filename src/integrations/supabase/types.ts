@@ -501,36 +501,45 @@ export type Database = {
       }
       services: {
         Row: {
+          base_price: number | null
           business_id: string
           created_at: string | null
           description: string | null
           duration_minutes: number
           id: string
           is_active: boolean | null
+          lowest_price_30d: number | null
           name: string
           price: number
+          sale_price: number | null
           updated_at: string | null
         }
         Insert: {
+          base_price?: number | null
           business_id: string
           created_at?: string | null
           description?: string | null
           duration_minutes: number
           id?: string
           is_active?: boolean | null
+          lowest_price_30d?: number | null
           name: string
           price: number
+          sale_price?: number | null
           updated_at?: string | null
         }
         Update: {
+          base_price?: number | null
           business_id?: string
           created_at?: string | null
           description?: string | null
           duration_minutes?: number
           id?: string
           is_active?: boolean | null
+          lowest_price_30d?: number | null
           name?: string
           price?: number
+          sale_price?: number | null
           updated_at?: string | null
         }
         Relationships: [
