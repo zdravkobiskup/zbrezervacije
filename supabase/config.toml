@@ -7,3 +7,5 @@ project_id = "nyiwsxcnuarardhwzkrt"
     verify_jwt = false
   [functions.send-weekly-schedule]
     verify_jwt = false
+  [functions.preview-transactional-email]
+    verify_jwt = false
