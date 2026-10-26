@@ -70,7 +70,7 @@ const Index = () => {
       <section className="py-24 bg-muted/30">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl md:text-4xl font-bold text-center mb-16">
-            Zašto odabrati BookEasy?
+            Zašto odabrati ZB rezervacije?
           </h2>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
@@ -124,7 +124,7 @@ const Index = () => {
             Spremni za početak?
           </h2>
           <p className="text-xl text-white/90 max-w-2xl mx-auto">
-            Pridružite se tisućama zadovoljnih korisnika koji koriste BookEasy
+            Pridružite se tisućama zadovoljnih korisnika koji koriste ZB rezervacije
           </p>
           <HeroButton variant="secondary" onClick={() => navigate("/auth")}>
             Registrirajte se besplatno
@@ -135,7 +135,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="py-8 border-t bg-card">
         <div className="container mx-auto px-4 text-center text-muted-foreground">
-          <p>© 2024 BookEasy. Sva prava pridržana.</p>
+          <p>© 2026 ZB rezervacije. Sva prava pridržana.</p>
         </div>
       </footer>
     </div>

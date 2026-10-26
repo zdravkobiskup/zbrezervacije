@@ -36,7 +36,7 @@ const handler = async (req: Request): Promise<Response> => {
     let subject = "";
     let html = "";
 
-    const appUrl = emailData.appUrl || "https://bookeasy.lovable.app";
+    const appUrl = emailData.appUrl || "https://zbrezervacije.info";
 
     switch (emailData.type) {
       case "confirmation":
@@ -56,7 +56,7 @@ const handler = async (req: Request): Promise<Response> => {
             <p>Ako imate bilo kakvih pitanja, slobodno nas kontaktirajte.</p>
             <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
               Srdačan pozdrav,<br>
-              BookEasy tim
+              ZB rezervacije tim
             </p>
           </div>
         `;
@@ -79,7 +79,7 @@ const handler = async (req: Request): Promise<Response> => {
             <p>Vidimo se uskoro!</p>
             <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
               Srdačan pozdrav,<br>
-              BookEasy tim
+              ZB rezervacije tim
             </p>
           </div>
         `;
@@ -110,7 +110,7 @@ const handler = async (req: Request): Promise<Response> => {
             </p>
             <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
               Srdačan pozdrav,<br>
-              BookEasy tim
+              ZB rezervacije tim
             </p>
           </div>
         `;
@@ -150,7 +150,7 @@ const handler = async (req: Request): Promise<Response> => {
             <p>Ako imate bilo kakvih pitanja, slobodno nas kontaktirajte.</p>
             <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
               Srdačan pozdrav,<br>
-              BookEasy tim
+              ZB rezervacije tim
             </p>
           </div>
         `;
@@ -173,7 +173,7 @@ const handler = async (req: Request): Promise<Response> => {
             <p>Ovaj termin je sada slobodan za druge rezervacije.</p>
             <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
               Srdačan pozdrav,<br>
-              BookEasy tim
+              ZB rezervacije tim
             </p>
           </div>
         `;
@@ -200,7 +200,7 @@ const handler = async (req: Request): Promise<Response> => {
             </div>
             <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
               Srdačan pozdrav,<br>
-              BookEasy tim
+              ZB rezervacije tim
             </p>
           </div>
         `;
@@ -215,7 +215,7 @@ const handler = async (req: Request): Promise<Response> => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: "BookEasy <onboarding@resend.dev>",
+          from: "ZB rezervacije <onboarding@resend.dev>",
           to: [emailData.clientEmail],
           subject: subject,
           html: html,

@@ -85,7 +85,7 @@ const BusinessDashboard = () => {
         <Card className="shadow-medium">
           <CardHeader className="text-center space-y-2">
             <Store className="w-16 h-16 mx-auto text-primary" />
-            <CardTitle className="text-2xl">Dobrodošli na BookEasy!</CardTitle>
+            <CardTitle className="text-2xl">Dobrodošli u ZB rezervacije!</CardTitle>
             <CardDescription>
               Započnite s postavljanjem vaše tvrtke i usluga koje nudite
             </CardDescription>

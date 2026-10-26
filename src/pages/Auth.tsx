@@ -250,7 +250,7 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-hero p-4">
       <Card className="w-full max-w-md shadow-large">
         <CardHeader className="space-y-2">
-          <CardTitle className="text-3xl text-center">BookEasy</CardTitle>
+          <CardTitle className="text-3xl text-center">ZB rezervacije</CardTitle>
           <CardDescription className="text-center">
             Jednostavno rezervirajte termine kod vaših omiljenih pružatelja usluga
           </CardDescription>
