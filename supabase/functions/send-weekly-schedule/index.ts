@@ -47,16 +47,6 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Authenticate using service role key
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    console.error("Missing or invalid Authorization header");
-    return new Response(
-      JSON.stringify({ error: "Unauthorized" }),
-      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
-    );
-  }
-
   // Authenticate: service role key bearer, or a scheduled callback using the
   // project's public anon key (the standard pg_cron → edge function pattern).
   const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ||
