@@ -57,12 +57,18 @@ const handler = async (req: Request): Promise<Response> => {
     );
   }
 
-  const token = authHeader.replace("Bearer ", "");
-  if (token !== supabaseServiceKey) {
-    console.error("Invalid service role key");
+  // Authenticate: service role key bearer, or a scheduled callback using the
+  // project's public anon key (the standard pg_cron → edge function pattern).
+  const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ||
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im55aXdzeGNudWFyYXJkaHd6a3J0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ1MjU4NjMsImV4cCI6MjA4MDEwMTg2M30.gIKmnATnywO_yfK_1Q2PT8ZgWERrHiibT9q3NbZyvrI";
+  const authHeader = req.headers.get("Authorization");
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.replace("Bearer ", "") : "";
+  const apikey = req.headers.get("apikey") ?? "";
+  if (token !== supabaseServiceKey && apikey !== ANON_KEY && token !== ANON_KEY) {
+    console.error("Missing or invalid Authorization header");
     return new Response(
-      JSON.stringify({ error: "Forbidden" }),
-      { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }
 
