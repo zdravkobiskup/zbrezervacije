@@ -51,14 +51,14 @@ const InventoryReport = ({ businessId }: InventoryReportProps) => {
         .from("material_transactions")
         .select("material_id, quantity_change")
         .in("material_id", materialIds)
-        .eq("type", "auto_deduct")
+        .in("type", ["auto_deduct", "manual_deduct"])
         .gte("created_at", sinceDate.toISOString());
       if (txError) throw txError;
 
       // Aggregate
       const consumption: Record<string, number> = {};
       (transactions || []).forEach(tx => {
-        consumption[tx.material_id] = (consumption[tx.material_id] || 0) + Math.abs(tx.quantity_change);
+        consumption[tx.material_id] = (consumption[tx.material_id] || 0) - tx.quantity_change;
       });
 
       const reportData: ConsumptionData[] = materials
