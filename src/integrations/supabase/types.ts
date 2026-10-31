@@ -720,6 +720,14 @@ export type Database = {
         Args: { p_action: string; p_record_id?: string; p_table_name: string }
         Returns: undefined
       }
+      set_booking_material_usage: {
+        Args: {
+          p_booking_id: string
+          p_material_id: string
+          p_quantity: number
+        }
+        Returns: number
+      }
     }
     Enums: {
       app_role: "business" | "client" | "admin"
