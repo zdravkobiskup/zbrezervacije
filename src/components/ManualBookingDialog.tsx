@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { format } from "date-fns";
 import { hr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { matchingClients, parseManualClient, uniqueReturningClients, type ReturningClient } from "@/lib/returning-clients";
 
 interface Service {
   id: string;
@@ -60,6 +61,77 @@ const ManualBookingDialog = ({
   const [clientEmail, setClientEmail] = useState("");
   const [notes, setNotes] = useState("");
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [previousClients, setPreviousClients] = useState<ReturningClient[]>([]);
+  const [clientsLoading, setClientsLoading] = useState(false);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [activeSuggestion, setActiveSuggestion] = useState(-1);
+  const clientSuggestions = matchingClients(previousClients, clientName);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPreviousClients([]);
+    setSuggestionsOpen(false);
+    if (!open) return;
+
+    const loadPreviousClients = async () => {
+      setClientsLoading(true);
+      try {
+        // Read only this business's bookings under the existing access rules.
+        const history: { id: string; client_id: string; notes: string | null }[] = [];
+        const pageSize = 500;
+        for (let offset = 0; ; offset += pageSize) {
+          const { data, error } = await supabase.from("bookings")
+            .select("id, client_id, notes")
+            .eq("business_id", businessId)
+            .order("created_at", { ascending: false })
+            .order("id", { ascending: false })
+            .range(offset, offset + pageSize - 1);
+          if (error) throw error;
+          if (cancelled) return;
+          history.push(...(data ?? []));
+          if (!data || data.length < pageSize) break;
+        }
+
+        const contacts: ReturningClient[] = [];
+        const registered = new Map<string, string>();
+        for (const booking of history) {
+          const manualClient = parseManualClient(booking.notes);
+          if (manualClient) contacts.push(manualClient);
+          else if (!booking.notes?.startsWith("[RUČNA REZERVACIJA]") && !registered.has(booking.client_id)) {
+            registered.set(booking.client_id, booking.id);
+          }
+        }
+        // The existing owner-authorized function exposes registered clients' name and email.
+        const bookingIds = [...registered.values()];
+        for (let index = 0; index < bookingIds.length; index += 10) {
+          const results = await Promise.all(bookingIds.slice(index, index + 10).map(async (id) => {
+            const { data, error } = await supabase.rpc("get_booking_client_info", { p_booking_id: id });
+            if (error) throw error;
+            return data?.[0];
+          }));
+          if (cancelled) return;
+          for (const info of results) {
+            if (info?.client_name) contacts.push({ name: info.client_name, email: info.client_email ?? "", phone: "" });
+          }
+        }
+        if (!cancelled) setPreviousClients(uniqueReturningClients(contacts));
+      } catch {
+        if (!cancelled) toast.error("Raniji klijenti nisu učitani. Podatke možete upisati ručno.");
+      } finally {
+        if (!cancelled) setClientsLoading(false);
+      }
+    };
+    void loadPreviousClients();
+    return () => { cancelled = true; };
+  }, [open, businessId]);
+
+  const selectClient = (client: ReturningClient) => {
+    setClientName(client.name);
+    setClientPhone(client.phone);
+    setClientEmail(client.email);
+    setSuggestionsOpen(false);
+    setActiveSuggestion(-1);
+  };
 
   useEffect(() => {
     if (open) {
@@ -247,6 +319,8 @@ const ManualBookingDialog = ({
   };
 
   const resetForm = () => {
+    setSuggestionsOpen(false);
+    setActiveSuggestion(-1);
     setSelectedService("");
     setSelectedEmployee("");
     setSelectedDate(undefined);
@@ -323,17 +397,70 @@ const ManualBookingDialog = ({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Ime klijenta *</Label>
+            <div className="space-y-2 relative">
+              <Label htmlFor="manual-client-name">Ime klijenta *</Label>
               <Input
+                id="manual-client-name"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={suggestionsOpen && clientSuggestions.length > 0}
+                aria-controls="manual-client-suggestions"
+                aria-activedescendant={suggestionsOpen && activeSuggestion >= 0 ? `manual-client-option-${activeSuggestion}` : undefined}
+                autoComplete="off"
                 value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
+                onChange={(e) => {
+                  setClientName(e.target.value);
+                  setSuggestionsOpen(true);
+                  setActiveSuggestion(-1);
+                }}
+                onFocus={() => setSuggestionsOpen(true)}
+                onBlur={() => setSuggestionsOpen(false)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    setSuggestionsOpen(false);
+                    return;
+                  }
+                  if (!clientSuggestions.length) return;
+                  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setSuggestionsOpen(true);
+                    const next = e.key === "ArrowDown"
+                      ? (activeSuggestion + 1) % clientSuggestions.length
+                      : (activeSuggestion <= 0 ? clientSuggestions.length : activeSuggestion) - 1;
+                    setActiveSuggestion(next);
+                    document.getElementById(`manual-client-option-${next}`)?.scrollIntoView({ block: "nearest" });
+                  } else if (e.key === "Enter" && suggestionsOpen && activeSuggestion >= 0) {
+                    const client = clientSuggestions[activeSuggestion];
+                    if (client) {
+                      e.preventDefault();
+                      selectClient(client);
+                    }
+                  }
+                }}
                 placeholder="Ime i prezime"
               />
+              {clientsLoading && <p role="status" className="text-xs text-muted-foreground">Učitavanje klijenata...</p>}
+              {suggestionsOpen && clientSuggestions.length > 0 && (
+                <div id="manual-client-suggestions" role="listbox" aria-label="Raniji klijenti"
+                  className="absolute z-50 left-0 right-0 top-full mt-1 max-h-56 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md">
+                  {clientSuggestions.map((client, index) => (
+                    <Button key={`${client.name}-${client.email}-${client.phone}`} type="button" variant="ghost"
+                      id={`manual-client-option-${index}`} role="option" aria-selected={activeSuggestion === index}
+                      tabIndex={-1}
+                      className={cn("w-full h-auto min-h-12 rounded-none flex-col items-start gap-1 px-3 py-2 whitespace-normal text-left", activeSuggestion === index && "bg-accent text-accent-foreground")}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => selectClient(client)}>
+                      <span className="font-medium break-words w-full">{client.name}</span>
+                      {(client.phone || client.email) && <span className="text-xs text-muted-foreground break-all w-full">{[client.phone, client.email].filter(Boolean).join(" · ")}</span>}
+                    </Button>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="space-y-2">
-              <Label>Telefon (opcionalno)</Label>
+              <Label htmlFor="manual-client-phone">Telefon (opcionalno)</Label>
               <Input
+                id="manual-client-phone"
                 value={clientPhone}
                 onChange={(e) => setClientPhone(e.target.value)}
                 placeholder="Broj telefona"
@@ -343,8 +470,9 @@ const ManualBookingDialog = ({
           </div>
 
           <div className="space-y-2">
-            <Label>Email (opcionalno - za slanje potvrde)</Label>
+            <Label htmlFor="manual-client-email">Email (opcionalno - za slanje potvrde)</Label>
             <Input
+              id="manual-client-email"
               value={clientEmail}
               onChange={(e) => setClientEmail(e.target.value)}
               placeholder="email@primjer.com"
