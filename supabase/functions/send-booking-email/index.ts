@@ -1,4 +1,5 @@
 import { sendTemplateEmail } from "../_shared/transactional-email-templates/send-email.ts";
+import { bookingEmailKey, type ReminderStage } from "../_shared/reminder-rules.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,6 +9,7 @@ const corsHeaders = {
 interface EmailRequest {
   type: "confirmation" | "status_change" | "reminder" | "no_show_followup" | "client_cancelled" | "reschedule_notification";
   bookingId?: string;
+  reminderStage?: ReminderStage;
   clientEmail: string;
   clientName: string;
   businessName: string;
@@ -91,7 +93,7 @@ Deno.serve(async (req) => {
     try {
       const result = await sendTemplateEmail("booking-notification", e.clientEmail, {
         templateData: data,
-        idempotencyKey: e.bookingId ? `booking-${e.type}-${e.bookingId}-${e.status ?? ""}-${e.bookingDate}-${e.bookingTime}` : undefined,
+        idempotencyKey: bookingEmailKey(e),
       });
       return json({ success: true, ...result });
     } catch (err: any) {
