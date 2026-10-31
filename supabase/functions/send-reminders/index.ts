@@ -1,8 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { fromZonedTime } from "npm:date-fns-tz@3.2.0";
+import { reminderStage } from "../_shared/reminder-rules.ts";
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const supabaseUrl = Deno.env.get("SUPABASE_URL");
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+if (!supabaseUrl || !supabaseServiceKey) throw new Error("Missing server configuration");
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -89,8 +92,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     for (const booking of bookings || []) {
       try {
-        const bookingDateTime = new Date(`${booking.booking_date}T${booking.booking_time}`);
+        const bookingDateTime = fromZonedTime(`${booking.booking_date}T${booking.booking_time}`, "Europe/Zagreb");
         const hoursUntilBooking = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+        const stage = reminderStage(hoursUntilBooking);
 
         console.log(`Booking ${booking.id}: ${hoursUntilBooking.toFixed(2)} hours until appointment`);
 
@@ -106,13 +110,14 @@ const handler = async (req: Request): Promise<Response> => {
         const service = serviceResult.data;
 
         // Send 24h reminder if between 23-25 hours before
-        if (hoursUntilBooking >= 23 && hoursUntilBooking <= 25) {
+        if (stage === "24h") {
           console.log(`Sending 24h reminder for booking ${booking.id}`);
           
           const emailResponse = await supabase.functions.invoke("send-booking-email", {
             body: {
               type: "reminder",
               bookingId: booking.id,
+              reminderStage: stage,
               clientEmail: profile?.email || "",
               clientName: profile?.full_name || "Korisnik",
               businessName: business?.name || "",
@@ -124,19 +129,20 @@ const handler = async (req: Request): Promise<Response> => {
 
           if (emailResponse.error) {
             console.error(`Error sending 24h reminder for booking ${booking.id}:`, emailResponse.error);
-          } else {
+          } else if (emailResponse.data?.sent === true) {
             remindersSent.push({ bookingId: booking.id, type: "24h" });
           }
         }
         
         // Send 6h reminder if between 5.5-6.5 hours before
-        else if (hoursUntilBooking >= 5.5 && hoursUntilBooking <= 6.5) {
+        else if (stage === "6h") {
           console.log(`Sending 6h reminder for booking ${booking.id}`);
           
           const emailResponse = await supabase.functions.invoke("send-booking-email", {
             body: {
               type: "reminder",
               bookingId: booking.id,
+              reminderStage: stage,
               clientEmail: profile?.email || "",
               clientName: profile?.full_name || "Korisnik",
               businessName: business?.name || "",
@@ -148,7 +154,7 @@ const handler = async (req: Request): Promise<Response> => {
 
           if (emailResponse.error) {
             console.error(`Error sending 6h reminder for booking ${booking.id}:`, emailResponse.error);
-          } else {
+          } else if (emailResponse.data?.sent === true) {
             remindersSent.push({ bookingId: booking.id, type: "6h" });
           }
         }
@@ -193,7 +199,7 @@ const handler = async (req: Request): Promise<Response> => {
 
             if (emailResponse.error) {
               console.error(`Error sending no-show follow-up for booking ${booking.id}:`, emailResponse.error);
-            } else {
+            } else if (emailResponse.data?.sent === true) {
               remindersSent.push({ bookingId: booking.id, type: "no_show_followup" });
             }
           }
