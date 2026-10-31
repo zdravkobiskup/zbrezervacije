@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ServiceNormatives from "./ServiceNormatives";
 import InventoryReport from "./InventoryReport";
+import CompletedBookingMaterials from "./CompletedBookingMaterials";
 
 interface Material {
   id: string;
@@ -324,6 +325,7 @@ const InventoryManagement = ({ businessId }: InventoryManagementProps) => {
 
         <TabsContent value="normatives" className="mt-4">
           <ServiceNormatives businessId={businessId} materials={materials} />
+          <CompletedBookingMaterials businessId={businessId} materials={materials} onSaved={loadMaterials} />
         </TabsContent>
 
         <TabsContent value="reports" className="mt-4">
